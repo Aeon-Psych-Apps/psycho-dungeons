@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "patch_time": null,
+  "version": "1.0.1 - Important! If after logging in, the game hangs on loading, have an admin read the patch notes in the Manual resource for how they can fix the issue. \nThe live patch file after version 1.0.0 breaks the game until/unless fixed client side.  🤦‍♂️",
+  "patch_time": "1761842488",
   "folder_id": null,
   "effects": {
     "heal_25": {
@@ -145,8 +145,8 @@
     },
     "starting_class": "warrior"
   },
-  "patch_url": "https://twilight-grass-8993.tines.com/webhook/Psycho-Games-Server",
-  "patch_auth": "2a99a4fe88d694f4f8c083fb4b2b4c95",
+  "patch_url": null,
+  "patch_auth": null,
   "word_list": [
     "Abyss",
     "Cinder",
