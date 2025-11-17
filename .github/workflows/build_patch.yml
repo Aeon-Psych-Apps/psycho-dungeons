@@ -74,7 +74,8 @@ jobs:
               images.append({
                   "name": file,
                   "type": mime_type,
-                  "contents": b64
+                  "contents": b64,
+                  "display_logo": true
               })
 
           # --- BUILD FULL JSON ---
