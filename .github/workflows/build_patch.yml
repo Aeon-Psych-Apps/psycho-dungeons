@@ -75,7 +75,7 @@ jobs:
                   "name": file,
                   "type": mime_type,
                   "contents": b64,
-                  "display_logo": true
+                  "display_logo": True
               })
 
           # --- BUILD FULL JSON ---
