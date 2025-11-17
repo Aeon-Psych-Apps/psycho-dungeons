@@ -1,10 +1,4 @@
-Patch 1.0.2 - 10/30/25
-
-# Update Patch / notes:
-- Updated enemy stat/difficulty scaling logic. Enemies will scale against player level, player expected damage (including gear, and off of player def stats.
-
-
-Patch 1.0.1 - 10/28/25 22:36 PST
+# Patch 1.0.1 - 10/28/25 22:36 PST
 
 # IMPORTANT
 If you patched the game to version 1.0.1 (which you definitely did if you are reading this 😂), your game actually just broke since I'm a dummy and decided to use dynamic folder_id referencing in the game config file which is used at least in the "Get Saved Player List" Tines action about 4 actions after the last login page sequence and "Setup Player Profile Resource" action above the Character Create Page UI action. To get the game working again after patching, both the "Replace Game Config Resource" actions in the live patch branch of the workflow (the right side branch of the Trigger action "No Live Branch") need to have their builder payload formulas updated to: 
