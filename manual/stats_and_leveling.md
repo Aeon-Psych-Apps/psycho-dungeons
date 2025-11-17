@@ -1,0 +1,1 @@
+Stats & Leveling\n\nGain XP by defeating enemies and bosses.\n\nNo current level cap; enemies, dungeons, and loot scale with your level.\n\nStats improve automatically as you level up, influenced by equipped gear.
