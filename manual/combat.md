@@ -1,0 +1,1 @@
+Combat\n\nTurn-based, 1 action per turn, with enemies acting simultaneously.\n\nActions include:\n\nAttack\n\nDefend\n\nUse Item\n\nAction order is influenced by speed and luck.\n\nLoot (XP, gold, items) is gained after defeating enemies or bosses.
