@@ -10,6 +10,7 @@ on:
 jobs:
   build_patch:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -26,6 +27,7 @@ jobs:
 
       - name: Generate latest.json (and versioned JSON if tag)
         run: |
+          python - <<'EOF'
           import os, json, base64, mimetypes
 
           # Directories
@@ -70,8 +72,7 @@ jobs:
               images.append({
                   "name": file,
                   "type": mime_type,
-                  "contents": b64,
-                  "display_logo": true
+                  "contents": b64
               })
 
           # --- BUILD FULL JSON ---
@@ -86,14 +87,15 @@ jobs:
           with open('latest.json', 'w', encoding='utf-8') as f:
               json.dump(patch_json, f, indent=2)
 
-          # If this is a tagged release, also write versioned JSON
+          # Versioned JSON if tagged
           tag = os.environ.get('GITHUB_REF', '')
           if tag.startswith('refs/tags/'):
               version = tag.replace('refs/tags/', '')
-              versioned_file = f'releases/{version}.json'
               os.makedirs('releases', exist_ok=True)
+              versioned_file = f'releases/{version}.json'
               with open(versioned_file, 'w', encoding='utf-8') as f:
                   json.dump(patch_json, f, indent=2)
+          EOF
 
       - name: Commit latest.json (and versioned JSON)
         run: |
