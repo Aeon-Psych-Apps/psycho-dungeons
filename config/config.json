@@ -1,0 +1,199 @@
+{
+  "version": "1.0.0",
+  "patch_time": null,
+  "folder_id": null,
+  "effects": {
+    "heal_25": {
+      "type": "heal",
+      "value": 25
+    },
+    "heal_50": {
+      "type": "heal",
+      "value": 50
+    },
+    "heal_75": {
+      "type": "heal",
+      "value": 75
+    },
+    "heal_100": {
+      "type": "heal",
+      "value": 100
+    },
+    "cure": {
+      "type": "cure",
+      "value": ""
+    },
+    "resist": {
+      "type": "resistance",
+      "value": 10
+    },
+    "bleed": {
+      "type": "dot",
+      "value": 5
+    },
+    "poison": {
+      "type": "dot",
+      "value": 10
+    }
+  },
+  "item_types": {
+    "main_hand": [
+      "Sword",
+      "Mace",
+      "Axe",
+      "Bow",
+      "Crossbow"
+    ],
+    "off_hand": [
+      "Shield",
+      "Orb",
+      "Dagger"
+    ],
+    "helmet": [
+      "Iron Helmet",
+      "Leather Cap",
+      "Wizard Hat"
+    ],
+    "chest": [
+      "Plate Armor",
+      "Chain Mail",
+      "Cloth Robe"
+    ],
+    "legs": [
+      "Plate Leggings",
+      "Leather Pants",
+      "Cloth Pants"
+    ],
+    "boots": [
+      "Iron Boots",
+      "Leather Boots",
+      "Cloth Shoes"
+    ],
+    "ring": [
+      "Gold Ring",
+      "Silver Ring",
+      "Gemstone Ring"
+    ]
+  },
+  "map_templates": {
+    "room_types": [
+      "empty",
+      "enemy",
+      "chest",
+      "npc",
+      "start",
+      "exit"
+    ],
+    "default_map_size": [
+      5,
+      5
+    ]
+  },
+  "game_settings": {
+    "max_inventory_size": 20,
+    "starting_gold": 100,
+    "starting_hp": 100,
+    "xp_scaling": {
+      "base_xp": 100,
+      "growth_rate": 1.25
+    },
+    "stat_scaling": {
+      "Warrior": {
+        "hp": 1.2,
+        "atk": 1.25,
+        "def": 1.15,
+        "spd": 0.95,
+        "luck": 1
+      },
+      "Rogue": {
+        "hp": 1,
+        "atk": 1.15,
+        "def": 0.9,
+        "spd": 1.25,
+        "luck": 1.2
+      },
+      "Mage": {
+        "hp": 0.85,
+        "atk": 1.3,
+        "def": 0.8,
+        "spd": 1,
+        "luck": 1.1
+      }
+    },
+    "starting_stats": {
+      "warrior": {
+        "atk": "(10, 14)",
+        "def": "(8, 12)",
+        "spd": "(4, 6)",
+        "luck": "(2, 5)",
+        "hp": "(95, 105)"
+      },
+      "rogue": {
+        "atk": "(8, 12)",
+        "def": "(6, 10)",
+        "spd": "(6, 8)",
+        "luck": "(3, 6)",
+        "hp": "(75, 85)"
+      },
+      "mage": {
+        "atk": "(7, 10)",
+        "def": "(4, 7)",
+        "spd": "(5, 7)",
+        "luck": "(5, 9)",
+        "hp": "(65, 80)"
+      }
+    },
+    "starting_class": "warrior"
+  },
+  "patch_url": "https://twilight-grass-8993.tines.com/webhook/Psycho-Games-Server",
+  "patch_auth": "2a99a4fe88d694f4f8c083fb4b2b4c95",
+  "word_list": [
+    "Abyss",
+    "Cinder",
+    "Grim",
+    "Iron",
+    "Rune",
+    "Shadow",
+    "Stone",
+    "Frost",
+    "Venom",
+    "Ashen",
+    "Blight",
+    "Blood",
+    "Echo",
+    "Ember",
+    "Crypt",
+    "Soul",
+    "Bone",
+    "Mire",
+    "Thorn",
+    "Drake",
+    "Hex",
+    "Wraith",
+    "Gloom",
+    "Vile",
+    "Oath"
+  ],
+  "enemy_base_stats": {
+    "Skeleton": {
+      "base_hp": 25,
+      "atk": 6,
+      "def": 3,
+      "spd": 3,
+      "luck": 1,
+      "gold": 10,
+      "exp": 15,
+      "description": "Animated bones held together by malice and magic. Hits harder than it looks."
+    },
+    "Vampire": {
+      "hp": 30,
+      "atk": 6,
+      "def": 4,
+      "spd": 3,
+      "luck": 5,
+      "gold": 10,
+      "exp": 20,
+      "description": "Elegant predator who drains life from the living. Quick, cunning, and regenerates when striking."
+    }
+  }
+}
