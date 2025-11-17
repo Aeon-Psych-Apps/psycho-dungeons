@@ -1,0 +1,1 @@
+Death & Revival\n\nCharacters permanently die if their HP reaches 0 and no elixir is in inventory.\n\nPlayers may create new characters on the same account, up to 3 active chracters at any time per account.
