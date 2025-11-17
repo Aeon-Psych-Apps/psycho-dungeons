@@ -1,6 +1,9 @@
 import random
 
 def main(input):
+  # Version 1.0.1
+  # Updated 10/28/25 22:36 PST
+  
   # Get and normalize the character class
   char_class = input.get('class', 'Warrior').lower()
 
@@ -20,7 +23,7 @@ def main(input):
       'luck': (3, 6),
       'hp': (75, 85)
     },
-    'mage': {
+    'skeleton': {
       'atk': (7, 10),
       'def': (4, 7),
       'spd': (5, 9),
