@@ -1,2 +1,6 @@
 # psycho-dungeons
 Psycho Dungeons - An RPG Dungeon Crawler made within and hosted with Tines No/Low Code automation platform. This repo is setup for public hosting of files and also serves as the new patch server (previously was fully contained within Tines, but was not optimized for long term viability)
+
+This is a newly created and work in progess repo to host the patch files, and other public content/information for the game.
+
+Psycho Dungeons was created for the sole purpose of competing in the "You Did What?! With Tines" Fall 2025 community competition. It was designed to push the limits (both personally and with the platform) to see what was possible/capable to do fully within the platform. As such, everything was created within, hosted, served, played via the Tines platform. For submission, even the patch service was contained within Tines, but I have decided it was not best for longterm reliability/stability and have thus created this repo to host the patch server/service as well as function as a public landing page of sorts for the game/app. Additionally, some updates to the game may be made that would require a re-import of the JSON story file, which hosting the updated file here would also accomplish (something not possible to do fully contained within the original story / patch service).
