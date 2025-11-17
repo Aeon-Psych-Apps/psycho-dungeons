@@ -1,4 +1,4 @@
-name: Build Tines Patch JSON
+name: Build Tines Patch JSON & Update Changelog
 
 on:
   push:
@@ -6,141 +6,128 @@ on:
       - main
       - test
     tags:
-      - 'v*.*.*'  # triggers versioned JSON generation
+      - 'v*.*.*'
 
 jobs:
   build_patch:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           persist-credentials: true
 
-      # 2. Setup Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      # 3. Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install python-magic
 
-      # 4. Generate patch JSON
-      - name: Generate latest.json / latest-test.json
+      - name: Generate latest.json (and versioned JSON if tag)
         run: |
           python - <<'EOF'
           import os, json, base64, mimetypes
-
-          branch = os.environ.get('GITHUB_REF_NAME', '')
 
           config_file = 'config/config.json'
           scripts_dir = 'scripts'
           images_dir = 'images'
           manual_dir = 'manual'
 
-          # --- CONFIG ---
+          # Load config
           with open(config_file, 'r', encoding='utf-8') as f:
               config = json.load(f)
 
-          # --- SCRIPTS ---
+          # Scripts
           scripts = []
           for file in os.listdir(scripts_dir):
               if file.endswith('.py'):
+                  name_only = os.path.splitext(file)[0]
                   with open(os.path.join(scripts_dir, file), 'r', encoding='utf-8') as f:
-                      scripts.append({"name": file, "contents": f.read()})
+                      scripts.append({"name": name_only, "contents": f.read()})
 
-          # --- MANUAL ---
+          # Manual
           manual = []
           for file in os.listdir(manual_dir):
               if file.endswith('.md'):
+                  name_only = os.path.splitext(file)[0]
                   with open(os.path.join(manual_dir, file), 'r', encoding='utf-8') as f:
-                      manual.append({"name": file, "contents": f.read()})
+                      manual.append({"name": name_only, "contents": f.read()})
 
-          # --- IMAGES ---
+          # Images
           images = []
           for file in os.listdir(images_dir):
               path = os.path.join(images_dir, file)
               mime_type, _ = mimetypes.guess_type(path)
-              if mime_type is None:
+              if not mime_type:
                   mime_type = 'application/octet-stream'
               with open(path, 'rb') as f:
                   b64 = base64.b64encode(f.read()).decode('utf-8')
               images.append({"name": file, "type": mime_type, "contents": b64, "display_logo": True})
 
-          # --- BUILD FULL JSON ---
-          patch_json = {
-              "config": config,
-              "scripts": scripts,
-              "images": images,
-              "manual": manual
-          }
+          # Build patch JSON
+          patch_json = {"config": config, "scripts": scripts, "images": images, "manual": manual}
 
-          # Write latest file based on branch
-          latest_file = 'latest.json' if branch == 'main' else 'latest-test.json'
-          with open(latest_file, 'w', encoding='utf-8') as f:
+          # Write latest.json
+          with open('latest.json', 'w', encoding='utf-8') as f:
               json.dump(patch_json, f, indent=2)
 
-          # Versioned JSON if tag
+          # Versioned JSON if tagged
           tag = os.environ.get('GITHUB_REF', '')
           if tag.startswith('refs/tags/'):
               version = tag.replace('refs/tags/', '')
               os.makedirs('releases', exist_ok=True)
-              versioned_file = f'releases/{version}.json'
-              with open(versioned_file, 'w', encoding='utf-8') as f:
+              with open(f'releases/{version}.json', 'w', encoding='utf-8') as f:
                   json.dump(patch_json, f, indent=2)
           EOF
 
-      # 5. Commit latest JSON and versioned JSON
-      - name: Commit patch JSON
+      - name: Update CHANGELOG.md & patch_notes.md
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add latest.json latest-test.json releases/*.json || true
-          git commit -m "Update patch JSON [skip ci]" || echo "Nothing to commit"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          VERSION="${GITHUB_REF_NAME}"
+          DATE=$(date +"%m/%d/%Y")
 
-      # 6. Generate PR-based CHANGELOG
-      - name: Generate PR-based CHANGELOG
-        run: |
-          branch="${GITHUB_REF_NAME}"
-          DATE=$(date +"%m/%d/%Y")  # MM/DD/YYYY format
+          # Determine previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          # Install GitHub CLI
-          sudo apt update
-          sudo apt install -y gh
-
-          # Authenticate GitHub CLI
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-
-          # Fetch merged PRs since last tag (if any)
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -n "$LAST_TAG" ]; then
-            PRs=$(gh pr list --state merged --base "$branch" --search "merged:>$LAST_TAG" --json title,number --jq '.[] | "- \(.title) (#\(.number))"')
-          else
-            PRs=$(gh pr list --state merged --base "$branch" --json title,number --jq '.[] | "- \(.title) (#\(.number))"')
-          fi
-
-          if [ -z "$PRs" ]; then
-            PRs="- Automated patch changes."
-          fi
+          # Collect relevant commits with multi-line extended descriptions
+          COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s%n%b" | awk '
+            BEGIN { RS=""; FS="\n"; ORS="\n" }
+            /^PATCH:|^FEATURE:|^FIX:/ {
+              short_msg=$1
+              printf "- %s\n", short_msg
+              for(i=2;i<=NF;i++){
+                if($i != "") print "  - " $i
+              }
+            }
+          ')
 
           # Prepend to CHANGELOG.md
-          sed -i "1a\\\n## [$branch - $DATE]\n$PRs\n" CHANGELOG.md
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Changelog" > CHANGELOG.md
+          fi
+          {
+            echo "[$VERSION] - $DATE"
+            echo "$COMMITS"
+            echo
+            cat CHANGELOG.md
+          } > tmp && mv tmp CHANGELOG.md
 
+          # Also update manual/patch_notes.md
+          mkdir -p manual
+          cp CHANGELOG.md manual/patch_notes.md
+
+          # Commit & push changes
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-          git commit -m "Update CHANGELOG for $branch [skip ci]" || true
+          git add CHANGELOG.md manual/patch_notes.md latest.json releases/*.json || true
+          git commit -m "Update CHANGELOG & patch_notes for $VERSION [skip ci]" || echo "Nothing to commit"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
 
-      # 7. Create GitHub Release if tagged
-      - name: Create GitHub Release
+      - name: Create GitHub Release if tagged
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
