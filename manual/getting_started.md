@@ -1,0 +1,1 @@
+Getting Started\n\nAccess the game via the Tines Web/Pages UI (browser-based, cross-platform).\n\nLink your email to create an account. Each account can have up to 3 active characters.\n\nSelect one of three starting classes: Warrior, Rogue, or Mage.
