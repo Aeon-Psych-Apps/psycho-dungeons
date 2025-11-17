@@ -1,0 +1,1 @@
+Town & Shop\n\nSpend gold to rest and fully heal your characters.\n\nThe shop has 3 rotating items available for purchase.\n\nSold gear is added to the shop if a slot is open, pending next refresh.\n\nEquip/unequip gear, switch characters, or prepare for your next dungeon from the town.
