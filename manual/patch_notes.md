@@ -2,7 +2,6 @@ Patch 1.0.2 - 10/30/25
 
 # Update Patch / notes:
 - Updated enemy stat/difficulty scaling logic. Enemies will scale against player level, player expected damage (including gear, and off of player def stats.
-- 
 
 
 Patch 1.0.1 - 10/28/25 22:36 PST
