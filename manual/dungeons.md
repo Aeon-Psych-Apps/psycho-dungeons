@@ -1,0 +1,1 @@
+Dungeons\n\nEach dungeon is randomly generated with:\n\nWidth: 6–10 tiles\n\nHeight: 4–7 tiles\n\nOnly some tiles are explorable\n\nRoom Types\n\nEnemy\n\nBoss\n\nChest\n\nTrap\n\nNPC\n\nEmpty\n\nExit\n\nExploration Rules\n\nTurn-based – 1 action per turn/sequence.\n\nAfter exiting a dungeon, you return to town. You cannot resume the same dungeon.
