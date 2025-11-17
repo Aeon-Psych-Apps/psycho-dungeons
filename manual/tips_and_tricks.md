@@ -1,0 +1,1 @@
+Tips & Tricks\n\nPrioritize speed and luck to act first in combat.\n\nManage inventory carefully – your bag has limited slots!\n\nCheck the shop regularly; rotating items can include rare gear.\n\nUse the elixir wisely; it’s your only way to revive a fallen character.
