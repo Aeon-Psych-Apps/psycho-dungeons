@@ -1,0 +1,1 @@
+Progression & Scaling\n\nPlayer and enemies scale with level and equipped gear.\n\nDropped gear also scales with your current level.\n\nHigher-level dungeons offer more challenging enemies and better loot.
