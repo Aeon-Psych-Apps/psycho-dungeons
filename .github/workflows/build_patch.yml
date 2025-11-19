@@ -17,7 +17,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-          fetch-depth: 0
 
       - name: Verify branch
         run: |
@@ -81,62 +80,69 @@ jobs:
 
       - name: Update CHANGELOG.md & patch_notes.md
         run: |
-          # Set timezone and format
-          DATE=$(TZ="America/Phoenix" date +"%m/%d/%Y %H:%M %Z")
-          
-          # Determine previous merge to main
-          RANGE=$(git merge-base origin/main HEAD)..HEAD
+          export TZ="America/Phoenix"
+          VERSION="$(date +%s)"  # use timestamp as temporary version identifier
+          DATE=$(date +"%m/%d/%Y %H:%M %Z")
 
-          # Gather commits with grouping
-          COMMITS=$(git log $RANGE --pretty=format:"%s%n%b%n__END__" | awk '
-          BEGIN { features=""; fixes=""; patches=""; misc=""; }
-          {
-            if ($0 == "__END__") next
-            n = split($0, lines, "\n")
-            subject = lines[1]
-            if (tolower(subject) ~ /^internal:/) next
-            entry = "- " subject "\n"
-            for (i=2; i<=n; i++) {
-              if (lines[i] != "") entry = entry "    - " lines[i] "\n"
+          # Determine previous main merge (if none, start from empty)
+          PREV_TAG=$(git merge-base origin/main HEAD 2>/dev/null || echo "")
+
+          # Grab commits since last merge from main
+          COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s%n%b" | awk '
+            BEGIN {
+              RS="";
+              FS="\n";
+              ORS="";
+              features="";
+              fixes="";
+              patches="";
+              misc="";
             }
-            lsubj = tolower(subject)
-            if (lsubj ~ /^feature:/) {
-              gsub(/^feature:[ ]*/, "", entry)
-              features = features entry "\n"
-            } else if (lsubj ~ /^fix:/) {
-              gsub(/^fix:[ ]*/, "", entry)
-              fixes = fixes entry "\n"
-            } else if (lsubj ~ /^patch:/) {
-              gsub(/^patch:[ ]*/, "", entry)
-              patches = patches entry "\n"
-            } else {
-              misc = misc entry "\n"
+            {
+              subject=$1;
+              if (tolower(subject) ~ /^internal:/) next;
+              entry="- " subject "\n";
+              for(i=2;i<=NF;i++){
+                if($i != "") entry=entry"    - "$i"\n";
+              }
+              # Check prefix case-insensitive
+              lc_subject=tolower(subject)
+              if (lc_subject ~ /^feature:/) {
+                gsub(/^feature:[ ]*/, "", entry)
+                features=features entry "\n"
+              } else if (lc_subject ~ /^fix:/) {
+                gsub(/^fix:[ ]*/, "", entry)
+                fixes=fixes entry "\n"
+              } else if (lc_subject ~ /^patch:/) {
+                gsub(/^patch:[ ]*/, "", entry)
+                patches=patches entry "\n"
+              } else {
+                misc=misc entry "\n"
+              }
             }
-          }
-          END {
-            if (features != "") print "### Features\n" features "\n";
-            if (fixes != "") print "### Fixes\n" fixes "\n";
-            if (patches != "") print "### Patches\n" patches "\n";
-            if (misc != "") print "### Misc\n" misc "\n";
-          }')
+            END {
+              if (features != "") print "### Features\n" features "\n";
+              if (fixes != "") print "### Fixes\n" fixes "\n";
+              if (patches != "") print "### Patches\n" patches "\n";
+              if (misc != "") print "### Misc\n" misc "\n";
+            }
+          ')
 
-          # Overwrite CHANGELOG with only current range commits
-          {
-            echo "[$DATE]"
-            echo ""
-            echo "$COMMITS"
-          } > CHANGELOG.md
+          # Overwrite CHANGELOG.md with only latest commits
+          echo "[$VERSION] - $DATE" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "$COMMITS" >> CHANGELOG.md
 
-          # Prepend to patch_notes.md
+          # Prepend latest changes to patch_notes.md
           mkdir -p manual
-          if [ -f manual/patch_notes.md ]; then
-            cat CHANGELOG.md manual/patch_notes.md > tmp && mv tmp manual/patch_notes.md
-          else
+          if [ ! -f manual/patch_notes.md ]; then
             cp CHANGELOG.md manual/patch_notes.md
+          else
+            { cat CHANGELOG.md; echo ""; cat manual/patch_notes.md; } > tmp && mv tmp manual/patch_notes.md
           fi
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md manual/patch_notes.md latest.json || true
-          git commit -m "Update CHANGELOG & patch_notes [skip ci]" || echo "Nothing to commit"
+          git commit -m "Update CHANGELOG & patch_notes for latest test build [skip ci]" || echo "Nothing to commit"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
