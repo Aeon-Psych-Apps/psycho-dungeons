@@ -17,13 +17,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
+          fetch-depth: 0
 
-      - name: Verify branch
+      - name: Verify branch and fetch main
         run: |
           if [ "${{ github.event.inputs.branch }}" != "test" ]; then
             echo "Workflow only runs for the test branch."
             exit 0
           fi
+
+          # Ensure main exists locally for comparison
+          git fetch origin main:main
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -85,7 +89,7 @@ jobs:
           # Determine the last merge commit from main
           LAST_MERGE=$(git log main..HEAD --merges --pretty=format:"%H" -1)
           if [ -z "$LAST_MERGE" ]; then
-            # No previous merges; use the first commit in branch
+            # No previous merges; use all commits in branch
             RANGE=$(git rev-list --reverse HEAD | head -n 1)..HEAD
           else
             RANGE=$LAST_MERGE..HEAD
