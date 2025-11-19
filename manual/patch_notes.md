@@ -1,3 +1,6 @@
+[11/18/2025 23:43 MST]
+
+
 [test] - 11/18/2025 23:34 MST
 
 
@@ -27,3 +30,4 @@ Luckily, the reinstall game button should still work to get you back playing in 
 - Increased drop rates for elixir consumables from 5% to 25% from the total chances of IF a consumable is dropped. So once a consumable is triggered to drop, there should be a 50% chance of it being a potion, 25% an antidote, and 25% an elixir.
 - New characters now start with 1 elixir in inventory (up from 0)
 - There is a bug where a character equipping HP increasing gear actually doesn't apply to the actual character's real HP, but effective HP (backend logic). This results in enemies thinking the player's character is a lot strong than reality, and may be way more difficult to beat. Until I can figure out if that is fixable from server side, I recommend (unfortunately) not to keep HP increasing gear equipped.
+
