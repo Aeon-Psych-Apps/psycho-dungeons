@@ -104,27 +104,34 @@ jobs:
 
           # Process commits and categorize
           COMMITS=$(git log --no-merges --pretty=format:"%s%n%b%n---" | awk '
-            BEGIN { RS="\n---\n"; FS="\n"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
+            BEGIN { RS="\n---\n"; FS="\n"; ORS=""; features=""; fixes=""; patches=""; misc=""; seen=0; }
             {
               subject=$1;
               body="";
               if(NF>1){ for(i=2;i<=NF;i++){ if($i!="") body=body"    - "$i"\n"; } }
-
+          
               # Skip internal/changelog commits
               lc_subject=tolower(subject);
               if(lc_subject ~ /^internal:/) next;
               if(lc_subject ~ /^update changelog/ || lc_subject ~ /^create patch_notes/ || lc_subject ~ /\[skip ci\]/) next;
-
-              # Strip prefixes and categorize
-              entry="";
+          
+              # Skip duplicates
+              key = subject body;
+              if(seen[key]++) next;
+          
+              # Determine category and create bullets/subpoints
+              entry="- " subject "\n" body;
               if(lc_subject ~ /^feature:/){
-                sub(/^feature:[ ]*/i,"",subject); entry=subject "\n" body; features=features entry "\n";
+                sub(/^feature:[ ]*/i,"",entry);
+                features=features entry "\n";
               } else if(lc_subject ~ /^fix:/){
-                sub(/^fix:[ ]*/i,"",subject); entry=subject "\n" body; fixes=fixes entry "\n";
+                sub(/^fix:[ ]*/i,"",entry);
+                fixes=fixes entry "\n";
               } else if(lc_subject ~ /^patch:/){
-                sub(/^patch:[ ]*/i,"",subject); entry=subject "\n" body; patches=patches entry "\n";
+                sub(/^patch:[ ]*/i,"",entry);
+                patches=patches entry "\n";
               } else {
-                entry=subject "\n" body; misc=misc entry "\n";
+                misc=misc entry "\n";
               }
             }
             END {
