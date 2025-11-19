@@ -21,8 +21,8 @@ jobs:
 
       - name: Verify branch
         run: |
-          if [ "${{ github.event.inputs.branch }}" != "test" ]; then
-            echo "Workflow only runs for the test branch."
+          if [ "${{ github.event.inputs.branch }}" != "test" ] && [ "${{ github.event.inputs.branch }}" != "main" ]; then
+            echo "Workflow only runs for the test or main branch."
             exit 0
           fi
 
@@ -36,7 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install python-magic pytz
 
-      - name: Generate latest.json (and versioned JSON if tag)
+      - name: Generate latest.json (and versioned JSON if on main with tag)
         run: |
           python - <<'EOF'
           import os, json, base64, mimetypes
@@ -79,8 +79,9 @@ jobs:
           with open('latest.json', 'w', encoding='utf-8') as f:
               json.dump(patch_json, f, indent=2)
 
+          # Only create versioned JSON if running on main with a tag
           tag = os.environ.get('GITHUB_REF', '')
-          if tag.startswith('refs/tags/'):
+          if os.environ.get('GITHUB_REF_NAME') and os.environ.get('GITHUB_REF').startswith('refs/tags/'):
               version = tag.replace('refs/tags/', '')
               with open(f'releases/{version}.json', 'w', encoding='utf-8') as f:
                   json.dump(patch_json, f, indent=2)
@@ -110,6 +111,7 @@ jobs:
               for(i=2;i<=NF;i++){
                 if($i != "") entry=entry"    - "$i"\n";
               }
+              # Match any prefix case-insensitively
               if(tolower(subject) ~ /^feature:/) { gsub(/^[Ff][Ee][Aa][Tt][Uu][Rr][Ee]:[ ]*/,"",entry); features=features entry "\n"; }
               else if(tolower(subject) ~ /^fix:/) { gsub(/^[Ff][Ii][Xx]:[ ]*/,"",entry); fixes=fixes entry "\n"; }
               else if(tolower(subject) ~ /^patch:/) { gsub(/^[Pp][Aa][Tt][Cc][Hh]:[ ]*/,"",entry); patches=patches entry "\n"; }
@@ -141,11 +143,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage only existing files, avoid failing if releases/*.json doesn't exist
+          # Stage files
           git add CHANGELOG.md manual/patch_notes.md latest.json
           git add releases/*.json 2>/dev/null || true
 
-          # Commit only if there are staged changes
+          # Commit only if there are changes
           if ! git diff --cached --quiet; then
             git commit -m "Update CHANGELOG & patch_notes for $DATE [skip ci]"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
