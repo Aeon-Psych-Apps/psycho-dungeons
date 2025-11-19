@@ -2,8 +2,6 @@ name: Build Tines Patch JSON & Update Changelog
 
 on:
   workflow_dispatch:
-    branches:
-      - test
     inputs:
       branch:
         description: 'Branch to run the workflow on'
@@ -37,7 +35,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install python-magic
 
-      - name: Generate latest.json (and versioned JSON if tag)
+      - name: Generate latest.json
         run: |
           python - <<'EOF'
           import os, json, base64, mimetypes
@@ -78,28 +76,22 @@ jobs:
 
           with open('latest.json', 'w', encoding='utf-8') as f:
               json.dump(patch_json, f, indent=2)
-
-          tag = os.environ.get('GITHUB_REF', '')
-          if tag.startswith('refs/tags/'):
-              version = tag.replace('refs/tags/', '')
-              os.makedirs('releases', exist_ok=True)
-              with open(f'releases/{version}.json', 'w', encoding='utf-8') as f:
-                  json.dump(patch_json, f, indent=2)
           EOF
 
       - name: Update CHANGELOG.md & patch_notes.md
         run: |
-          VERSION="${GITHUB_REF_NAME}"
           DATE=$(date +"%m/%d/%Y")
 
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-          if [ -z "$PREV_TAG" ]; then
-            RANGE="--reverse HEAD"
+          # Determine the last merge commit from main
+          LAST_MERGE=$(git log main..HEAD --merges --pretty=format:"%H" -1)
+          if [ -z "$LAST_MERGE" ]; then
+            # No previous merges; use the first commit in branch
+            RANGE=$(git rev-list --reverse HEAD | head -n 1)..HEAD
           else
-            RANGE="${PREV_TAG}..HEAD"
+            RANGE=$LAST_MERGE..HEAD
           fi
 
+          # Collect commits
           COMMITS=$(git log $RANGE --pretty=format:"%s%n%b" | awk '
             BEGIN {
               RS="";
@@ -112,19 +104,22 @@ jobs:
             }
             {
               subject=$1;
-              if (subject ~ /^INTERNAL:/) next;
+              # Skip internal commits (case-insensitive)
+              if (tolower(subject) ~ /^internal:/) next;
               entry="- " subject "\n";
               for(i=2;i<=NF;i++){
-                if($i != "") entry=entry"  - "$i"\n";
+                if($i != "") entry=entry"    - "$i"\n";  # double indent for extended description
               }
-              if (subject ~ /^FEATURE:/) {
-                gsub(/^FEATURE:[ ]*/, "", entry);
+
+              # Case-insensitive prefix handling
+              if (tolower(subject) ~ /^feature:/) {
+                gsub(/^feature:[ ]*/,"",entry);
                 features=features entry "\n";
-              } else if (subject ~ /^FIX:/) {
-                gsub(/^FIX:[ ]*/, "", entry);
+              } else if (tolower(subject) ~ /^fix:/) {
+                gsub(/^fix:[ ]*/,"",entry);
                 fixes=fixes entry "\n";
-              } else if (subject ~ /^PATCH:/) {
-                gsub(/^PATCH:[ ]*/, "", entry);
+              } else if (tolower(subject) ~ /^patch:/) {
+                gsub(/^patch:[ ]*/,"",entry);
                 patches=patches entry "\n";
               } else {
                 misc=misc entry "\n";
@@ -138,32 +133,27 @@ jobs:
             }
           ')
 
-          if [ ! -f CHANGELOG.md ]; then
-            echo "# Changelog" > CHANGELOG.md
-          fi
-
+          # Write latest changes to CHANGELOG.md (overwrite)
           {
-            echo "[$VERSION] - $DATE"
+            echo "[$DATE]"
             echo ""
             echo "$COMMITS"
-            cat CHANGELOG.md
-          } > tmp && mv tmp CHANGELOG.md
+          } > CHANGELOG.md
 
+          # Prepend latest changes to patch_notes.md
           mkdir -p manual
-          cp CHANGELOG.md manual/patch_notes.md
+          if [ ! -f manual/patch_notes.md ]; then
+            echo "" > manual/patch_notes.md
+          fi
+          {
+            cat CHANGELOG.md
+            echo ""
+            cat manual/patch_notes.md
+          } > tmp && mv tmp manual/patch_notes.md
 
+          # Commit & push
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md manual/patch_notes.md latest.json
-          git add releases/*.json 2>/dev/null || true
-          git commit -m "Update CHANGELOG & patch_notes for $VERSION [skip ci]" || echo "Nothing to commit"
+          git add CHANGELOG.md manual/patch_notes.md latest.json || true
+          git commit -m "Update latest changelog and patch notes [skip ci]" || echo "Nothing to commit"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-
-      - name: Create GitHub Release if tagged
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            releases/*.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
