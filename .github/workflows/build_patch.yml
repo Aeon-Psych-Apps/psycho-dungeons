@@ -94,7 +94,8 @@ jobs:
           echo "Phoenix timestamp: $DATE"
 
           echo "=== Full commit log for debugging ==="
-          git log --no-merges --pretty=format:"%H %s%n%b%n---"
+          LAST_TAG=$(git describe --tags --abbrev=0)
+          git log --no-merges ${LAST_TAG}..HEAD --pretty=format:"%s%n%b%n---"
 
       - name: Update CHANGELOG.md & patch_notes.md
         run: |
