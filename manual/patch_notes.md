@@ -1,4 +1,4 @@
-[11/19/2025 01:49 MST]
+1.0.1 - [11/19/2025 01:49 MST]
 
 ### Features
 - FEATURE: latest
@@ -263,3 +263,4 @@
 
 - Initial commit
     - ---
+
