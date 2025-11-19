@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "github_version": "1.0.0",
+  "version": "1.0.1",
+  "github_version": "1.0.1",
   "patch_time": null,
   "folder_id": null,
   "effects": {
@@ -146,8 +146,8 @@
     },
     "starting_class": "warrior"
   },
-  "patch_url": "https://twilight-grass-8993.tines.com/webhook/Psycho-Games-Server",
-  "patch_auth": "2a99a4fe88d694f4f8c083fb4b2b4c95",
+  "patch_url": null,
+  "patch_auth": null,
   "word_list": [
     "Abyss",
     "Cinder",

@@ -2,6 +2,9 @@ import random
 import uuid
 
 def main(input):
+    # Version 1.0.1
+    # Updated 10/28/25 22:36 PST
+  
     # ---------------------
     # Inputs
     # ---------------------
@@ -208,7 +211,7 @@ def main(input):
 
     if random.random() < config['consumable_chance']:
         consumable = random.choices(
-            consumables, weights=[0.5, 0.25, 0.05], k=1
+            consumables, weights=[0.5, 0.25, 0.25], k=1
         )[0]
         result['consumable_dropped'] = consumable['item_id']
 
