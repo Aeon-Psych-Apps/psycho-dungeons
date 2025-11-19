@@ -17,17 +17,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-          fetch-depth: 0
 
-      - name: Verify branch and fetch main
+      - name: Verify branch
         run: |
           if [ "${{ github.event.inputs.branch }}" != "test" ]; then
             echo "Workflow only runs for the test branch."
             exit 0
           fi
-
-          # Ensure main exists locally for comparison
-          git fetch origin main:main
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -85,79 +81,67 @@ jobs:
       - name: Update CHANGELOG.md & patch_notes.md
         run: |
           DATE=$(date +"%m/%d/%Y")
-
-          # Determine the last merge commit from main
-          LAST_MERGE=$(git log main..HEAD --merges --pretty=format:"%H" -1)
-          if [ -z "$LAST_MERGE" ]; then
-            # No previous merges; use all commits in branch
-            RANGE=$(git rev-list --reverse HEAD | head -n 1)..HEAD
+          
+          # Determine the commit range since last merge into main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            RANGE=$(git merge-base origin/main HEAD)..HEAD
           else
-            RANGE=$LAST_MERGE..HEAD
+            RANGE=HEAD
           fi
 
-          # Collect commits
-          COMMITS=$(git log $RANGE --pretty=format:"%s%n%b" | awk '
-            BEGIN {
-              RS="";
-              FS="\n";
-              ORS="";
-              features="";
-              fixes="";
-              patches="";
-              misc="";
+          COMMITS=$(git log $RANGE --pretty=format:"%s%n%b%n__END__" | awk '
+          BEGIN {
+            features=""; fixes=""; patches=""; misc="";
+          }
+          $0 != "__END__" {
+            split($0, lines, "\n")
+            subject = lines[1]
+            if (tolower(subject) ~ /^internal:/) next
+            entry = "- " subject "\n"
+            for (i=2; i<=length(lines); i++) {
+              if (lines[i] != "") entry = entry "    - " lines[i] "\n"
             }
-            {
-              subject=$1;
-              # Skip internal commits (case-insensitive)
-              if (tolower(subject) ~ /^internal:/) next;
-              entry="- " subject "\n";
-              for(i=2;i<=NF;i++){
-                if($i != "") entry=entry"    - "$i"\n";  # double indent for extended description
-              }
-
-              # Case-insensitive prefix handling
-              if (tolower(subject) ~ /^feature:/) {
-                gsub(/^feature:[ ]*/,"",entry);
-                features=features entry "\n";
-              } else if (tolower(subject) ~ /^fix:/) {
-                gsub(/^fix:[ ]*/,"",entry);
-                fixes=fixes entry "\n";
-              } else if (tolower(subject) ~ /^patch:/) {
-                gsub(/^patch:[ ]*/,"",entry);
-                patches=patches entry "\n";
-              } else {
-                misc=misc entry "\n";
-              }
+            if (tolower(subject) ~ /^feature:/) {
+              gsub(/^feature:[ ]*/, "", entry)
+              features = features entry "\n"
+            } else if (tolower(subject) ~ /^fix:/) {
+              gsub(/^fix:[ ]*/, "", entry)
+              fixes = fixes entry "\n"
+            } else if (tolower(subject) ~ /^patch:/) {
+              gsub(/^patch:[ ]*/, "", entry)
+              patches = patches entry "\n"
+            } else {
+              misc = misc entry "\n"
             }
-            END {
-              if (features != "") print "### Features\n" features "\n";
-              if (fixes != "") print "### Fixes\n" fixes "\n";
-              if (patches != "") print "### Patches\n" patches "\n";
-              if (misc != "") print "### Misc\n" misc "\n";
-            }
+          }
+          END {
+            if (features != "") print "### Features\n" features "\n";
+            if (fixes != "") print "### Fixes\n" fixes "\n";
+            if (patches != "") print "### Patches\n" patches "\n";
+            if (misc != "") print "### Misc\n" misc "\n";
+          }
           ')
 
-          # Write latest changes to CHANGELOG.md (overwrite)
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Changelog" > CHANGELOG.md
+          fi
+
           {
             echo "[$DATE]"
             echo ""
             echo "$COMMITS"
-          } > CHANGELOG.md
+          } > tmp && mv tmp CHANGELOG.md
 
-          # Prepend latest changes to patch_notes.md
           mkdir -p manual
+          # Prepend latest changes to patch_notes.md
           if [ ! -f manual/patch_notes.md ]; then
-            echo "" > manual/patch_notes.md
+            cp CHANGELOG.md manual/patch_notes.md
+          else
+            cat CHANGELOG.md manual/patch_notes.md > tmp && mv tmp manual/patch_notes.md
           fi
-          {
-            cat CHANGELOG.md
-            echo ""
-            cat manual/patch_notes.md
-          } > tmp && mv tmp manual/patch_notes.md
 
-          # Commit & push
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md manual/patch_notes.md latest.json || true
-          git commit -m "Update latest changelog and patch notes [skip ci]" || echo "Nothing to commit"
+          git commit -m "Update CHANGELOG & patch_notes for latest test build [skip ci]" || echo "Nothing to commit"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
