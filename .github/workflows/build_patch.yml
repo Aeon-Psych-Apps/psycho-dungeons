@@ -2,6 +2,8 @@ name: Build Tines Patch JSON & Update Changelog
 
 on:
   workflow_dispatch:
+    branches:
+      - test
     inputs:
       branch:
         description: 'Branch to run the workflow on'
