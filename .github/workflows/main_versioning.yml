@@ -1,0 +1,36 @@
+name: Release on Main Merge
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    types: [ "closed" ]
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from config.json
+        id: read_version
+        run: |
+          VERSION=$(jq -r '.github_version' config/config.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Copy latest.json into releases directory
+        run: |
+          mkdir -p releases
+          cp latest.json releases/${{ steps.read_version.outputs.version }}.json
+
+      - name: Commit versioned file
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add releases/
+          git commit -m "internal: Release version ${{ steps.read_version.outputs.version }}"
+          git push
