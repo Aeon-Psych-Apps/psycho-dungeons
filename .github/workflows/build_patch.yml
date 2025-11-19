@@ -94,7 +94,13 @@ jobs:
 
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s%n%b" | awk '
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="--reverse HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+
+          COMMITS=$(git log $RANGE --pretty=format:"%s%n%b" | awk '
             BEGIN {
               RS="";
               FS="\n";
