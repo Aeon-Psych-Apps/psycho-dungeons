@@ -11,26 +11,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # 1. Checkout the merged commit (post-merge main)
+      - name: Checkout merged result
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Read version from config.json
-        id: read_version
+      # 2. Checkout the base branch (main BEFORE merge) into a subfolder
+      - name: Checkout main pre-merge
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          path: premerge
+          fetch-depth: 0
+
+      # 3. Read version from pre-merge config/config.json
+      - name: Extract version
+        id: version
         run: |
-          VERSION=$(jq -r '.github_version' config/config.json)
+          VERSION=$(jq -r '.github_version' premerge/config/config.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Copy latest.json into releases directory
+      # 4. Copy pre-merge latest.json and version it
+      - name: Version pre-merge latest.json
         run: |
           mkdir -p releases
-          cp latest.json releases/${{ steps.read_version.outputs.version }}.json
+          cp premerge/latest.json releases/psycho-dungeons_${{ steps.version.outputs.version }}.json
 
-      - name: Commit versioned file
+      # 5. Commit and push new release file
+      - name: Commit release file
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
+
           git add releases/
-          git commit -m "internal: Release version ${{ steps.read_version.outputs.version }}"
+          git commit -m "Release version ${{ steps.version.outputs.version }}"
           git push
