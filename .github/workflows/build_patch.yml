@@ -86,24 +86,25 @@ jobs:
                   json.dump(patch_json, f, indent=2)
           EOF
 
-      - name: Update CHANGELOG.md & patch_notes.md
+      - name: Debug commits since last merge
         run: |
-          # Set Phoenix timezone
           TZ="America/Phoenix"
           DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
 
-          # Determine previous merge to main; fallback to first commit if none
           PREV_MAIN=$(git merge-base HEAD origin/main 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Using PREV_MAIN: $PREV_MAIN"
 
-          # Collect commits since last merge, excluding internal: (case-insensitive)
+          echo "=== Commits since last merge ==="
+          git log ${PREV_MAIN}..HEAD --pretty=format:"%H %s%n%b%n---" || echo "No commits found"
+
+      - name: Update CHANGELOG.md & patch_notes.md
+        run: |
+          TZ="America/Phoenix"
+          DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
+          PREV_MAIN=$(git merge-base HEAD origin/main 2>/dev/null || git rev-list --max-parents=0 HEAD)
+
           COMMITS=$(git log ${PREV_MAIN}..HEAD --pretty=format:"%s%n%b" | awk '
-            BEGIN {
-              RS="";
-              FS="\n";
-              ORS="";
-              features=""; fixes=""; patches=""; misc="";
-            }
+            BEGIN { RS=""; FS="\n"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
             {
               subject=$1;
               if(tolower(subject) ~ /^internal:/) next;
@@ -111,18 +112,10 @@ jobs:
               for(i=2;i<=NF;i++){
                 if($i != "") entry=entry"    - "$i"\n";
               }
-              if(tolower(subject) ~ /^feature:/) {
-                gsub(/^FEATURE:[ ]*/,"",entry);
-                features=features entry "\n";
-              } else if(tolower(subject) ~ /^fix:/) {
-                gsub(/^FIX:[ ]*/,"",entry);
-                fixes=fixes entry "\n";
-              } else if(tolower(subject) ~ /^patch:/) {
-                gsub(/^PATCH:[ ]*/,"",entry);
-                patches=patches entry "\n";
-              } else {
-                misc=misc entry "\n";
-              }
+              if(tolower(subject) ~ /^feature:/) { gsub(/^FEATURE:[ ]*/,"",entry); features=features entry "\n"; }
+              else if(tolower(subject) ~ /^fix:/) { gsub(/^FIX:[ ]*/,"",entry); fixes=fixes entry "\n"; }
+              else if(tolower(subject) ~ /^patch:/) { gsub(/^PATCH:[ ]*/,"",entry); patches=patches entry "\n"; }
+              else { misc=misc entry "\n"; }
             }
             END {
               if(features != "") print "### Features\n" features "\n";
@@ -132,14 +125,12 @@ jobs:
             }
           ')
 
-          # Write only recent changes to CHANGELOG.md
           {
             echo "[$DATE]"
             echo ""
             echo "$COMMITS"
           } > CHANGELOG.md
 
-          # Append new changelog to patch_notes.md
           mkdir -p manual
           if [ ! -f manual/patch_notes.md ]; then
             echo "# Patch Notes" > manual/patch_notes.md
