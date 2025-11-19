@@ -1,5 +1,6 @@
 {
   "version": "1.0.1 - Important! If after logging in, the game hangs on loading, have an admin read the patch notes in the Manual resource for how they can fix the issue. \nThe live patch file after version 1.0.0 breaks the game until/unless fixed client side.  🤦‍♂️",
+  "github_version": "1.0.1",
   "patch_time": "1761842488",
   "folder_id": null,
   "effects": {
