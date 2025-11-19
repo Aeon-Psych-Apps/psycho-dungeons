@@ -80,36 +80,32 @@ jobs:
 
       - name: Update CHANGELOG.md & patch_notes.md
         run: |
-          # Set timezone
-          export TZ="America/Phoenix"
-          DATE=$(date +"%m/%d/%Y %H:%M %Z")
+          # Set timezone and format
+          DATE=$(TZ="America/Phoenix" date +"%m/%d/%Y %H:%M %Z")
+          
+          # Determine previous merge to main
+          RANGE=$(git merge-base origin/main HEAD)..HEAD
 
-          # Determine range since last merge from main
-          if git merge-base --is-ancestor origin/main HEAD; then
-            RANGE=$(git merge-base origin/main HEAD)..HEAD
-          else
-            RANGE=HEAD
-          fi
-
+          # Gather commits with grouping
           COMMITS=$(git log $RANGE --pretty=format:"%s%n%b%n__END__" | awk '
-          BEGIN {
-            features=""; fixes=""; patches=""; misc="";
-          }
-          $0 != "__END__" {
-            split($0, lines, "\n")
+          BEGIN { features=""; fixes=""; patches=""; misc=""; }
+          {
+            if ($0 == "__END__") next
+            n = split($0, lines, "\n")
             subject = lines[1]
             if (tolower(subject) ~ /^internal:/) next
             entry = "- " subject "\n"
-            for (i=2; i<=length(lines); i++) {
+            for (i=2; i<=n; i++) {
               if (lines[i] != "") entry = entry "    - " lines[i] "\n"
             }
-            if (tolower(subject) ~ /^feature:/) {
+            lsubj = tolower(subject)
+            if (lsubj ~ /^feature:/) {
               gsub(/^feature:[ ]*/, "", entry)
               features = features entry "\n"
-            } else if (tolower(subject) ~ /^fix:/) {
+            } else if (lsubj ~ /^fix:/) {
               gsub(/^fix:[ ]*/, "", entry)
               fixes = fixes entry "\n"
-            } else if (tolower(subject) ~ /^patch:/) {
+            } else if (lsubj ~ /^patch:/) {
               gsub(/^patch:[ ]*/, "", entry)
               patches = patches entry "\n"
             } else {
@@ -121,26 +117,25 @@ jobs:
             if (fixes != "") print "### Fixes\n" fixes "\n";
             if (patches != "") print "### Patches\n" patches "\n";
             if (misc != "") print "### Misc\n" misc "\n";
-          }
-          ')
+          }')
 
-          # Overwrite CHANGELOG.md with only recent changes
+          # Overwrite CHANGELOG with only current range commits
           {
             echo "[$DATE]"
             echo ""
             echo "$COMMITS"
           } > CHANGELOG.md
 
+          # Prepend to patch_notes.md
           mkdir -p manual
-          # Prepend latest changes to patch_notes.md
-          if [ ! -f manual/patch_notes.md ]; then
-            cp CHANGELOG.md manual/patch_notes.md
-          else
+          if [ -f manual/patch_notes.md ]; then
             cat CHANGELOG.md manual/patch_notes.md > tmp && mv tmp manual/patch_notes.md
+          else
+            cp CHANGELOG.md manual/patch_notes.md
           fi
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md manual/patch_notes.md latest.json || true
-          git commit -m "Update CHANGELOG & patch_notes for latest test build [skip ci]" || echo "Nothing to commit"
+          git commit -m "Update CHANGELOG & patch_notes [skip ci]" || echo "Nothing to commit"
           git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
