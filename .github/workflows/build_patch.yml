@@ -75,13 +75,13 @@ jobs:
 
           patch_json = {"config": config, "scripts": scripts, "images": images, "manual": manual}
 
+          os.makedirs('releases', exist_ok=True)
           with open('latest.json', 'w', encoding='utf-8') as f:
               json.dump(patch_json, f, indent=2)
 
           tag = os.environ.get('GITHUB_REF', '')
           if tag.startswith('refs/tags/'):
               version = tag.replace('refs/tags/', '')
-              os.makedirs('releases', exist_ok=True)
               with open(f'releases/{version}.json', 'w', encoding='utf-8') as f:
                   json.dump(patch_json, f, indent=2)
           EOF
@@ -90,10 +90,8 @@ jobs:
         run: |
           TZ="America/Phoenix"
           DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
-
           PREV_MAIN=$(git merge-base HEAD origin/main 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Using PREV_MAIN: $PREV_MAIN"
-
           echo "=== Commits since last merge ==="
           git log ${PREV_MAIN}..HEAD --pretty=format:"%H %s%n%b%n---" || echo "No commits found"
 
@@ -112,9 +110,9 @@ jobs:
               for(i=2;i<=NF;i++){
                 if($i != "") entry=entry"    - "$i"\n";
               }
-              if(tolower(subject) ~ /^feature:/) { gsub(/^FEATURE:[ ]*/,"",entry); features=features entry "\n"; }
-              else if(tolower(subject) ~ /^fix:/) { gsub(/^FIX:[ ]*/,"",entry); fixes=fixes entry "\n"; }
-              else if(tolower(subject) ~ /^patch:/) { gsub(/^PATCH:[ ]*/,"",entry); patches=patches entry "\n"; }
+              if(tolower(subject) ~ /^feature:/) { gsub(/^[Ff][Ee][Aa][Tt][Uu][Rr][Ee]:[ ]*/,"",entry); features=features entry "\n"; }
+              else if(tolower(subject) ~ /^fix:/) { gsub(/^[Ff][Ii][Xx]:[ ]*/,"",entry); fixes=fixes entry "\n"; }
+              else if(tolower(subject) ~ /^patch:/) { gsub(/^[Pp][Aa][Tt][Cc][Hh]:[ ]*/,"",entry); patches=patches entry "\n"; }
               else { misc=misc entry "\n"; }
             }
             END {
@@ -135,11 +133,22 @@ jobs:
           if [ ! -f manual/patch_notes.md ]; then
             echo "# Patch Notes" > manual/patch_notes.md
           fi
-          cat CHANGELOG.md >> manual/patch_notes.md
+          # Prepend new changelog to patch_notes
+          cat CHANGELOG.md manual/patch_notes.md > manual/tmp_patch_notes.md
+          mv manual/tmp_patch_notes.md manual/patch_notes.md
           echo "" >> manual/patch_notes.md
 
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md manual/patch_notes.md latest.json releases/*.json || true
-          git commit -m "Update CHANGELOG & patch_notes for $DATE [skip ci]" || echo "Nothing to commit"
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+          # Stage only existing files, avoid failing if releases/*.json doesn't exist
+          git add CHANGELOG.md manual/patch_notes.md latest.json
+          git add releases/*.json 2>/dev/null || true
+
+          # Commit only if there are staged changes
+          if ! git diff --cached --quiet; then
+            git commit -m "Update CHANGELOG & patch_notes for $DATE [skip ci]"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          else
+            echo "No changes to commit"
+          fi
