@@ -80,9 +80,11 @@ jobs:
 
       - name: Update CHANGELOG.md & patch_notes.md
         run: |
-          DATE=$(date +"%m/%d/%Y")
-          
-          # Determine the commit range since last merge into main
+          # Set timezone
+          export TZ="America/Phoenix"
+          DATE=$(date +"%m/%d/%Y %H:%M %Z")
+
+          # Determine range since last merge from main
           if git merge-base --is-ancestor origin/main HEAD; then
             RANGE=$(git merge-base origin/main HEAD)..HEAD
           else
@@ -122,15 +124,12 @@ jobs:
           }
           ')
 
-          if [ ! -f CHANGELOG.md ]; then
-            echo "# Changelog" > CHANGELOG.md
-          fi
-
+          # Overwrite CHANGELOG.md with only recent changes
           {
             echo "[$DATE]"
             echo ""
             echo "$COMMITS"
-          } > tmp && mv tmp CHANGELOG.md
+          } > CHANGELOG.md
 
           mkdir -p manual
           # Prepend latest changes to patch_notes.md
