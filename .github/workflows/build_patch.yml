@@ -93,7 +93,6 @@ jobs:
           DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
           echo "Current Phoenix timestamp: $DATE"
 
-          # Grab all commits on current branch (HEAD)
           echo "=== Commits on branch ${{ github.event.inputs.branch }} ==="
           git log --no-merges --pretty=format:"%H %s%n%b%n---"
 
@@ -102,17 +101,19 @@ jobs:
           TZ="America/Phoenix"
           DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
 
-          # All commits on the current branch (exclude merges)
-          COMMITS=$(git log --no-merges --pretty=format:"%s%n%b" | awk '
-            BEGIN { RS=""; FS="\n"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
+          COMMITS=$(git log --no-merges --pretty=format:"%s%n%b%n---" | awk '
+            BEGIN { RS="\n---\n"; FS="\n"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
             {
               subject=$1;
-              # Exclude commits with internal:
+              # Exclude internal and changelog commits
               if(tolower(subject) ~ /^internal:/) next;
+              if(tolower(subject) ~ /^update changelog/ || tolower(subject) ~ /^create patch_notes/ || tolower(subject) ~ /\[skip ci\]/) next;
+
               entry="- " subject "\n";
               for(i=2;i<=NF;i++){
                 if($i != "") entry=entry"    - "$i"\n";
               }
+
               if(tolower(subject) ~ /^feature:/) { gsub(/^[Ff][Ee][Aa][Tt][Uu][Rr][Ee]:[ ]*/,"",entry); features=features entry "\n"; }
               else if(tolower(subject) ~ /^fix:/) { gsub(/^[Ff][Ii][Xx]:[ ]*/,"",entry); fixes=fixes entry "\n"; }
               else if(tolower(subject) ~ /^patch:/) { gsub(/^[Pp][Aa][Tt][Cc][Hh]:[ ]*/,"",entry); patches=patches entry "\n"; }
@@ -126,7 +127,6 @@ jobs:
             }
           ')
 
-          # Write to CHANGELOG
           {
             echo "[$DATE]"
             echo ""
@@ -146,11 +146,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage files
           git add CHANGELOG.md manual/patch_notes.md latest.json
           git add releases/*.json 2>/dev/null || true
 
-          # Commit only if there are changes
           if ! git diff --cached --quiet; then
             git commit -m "Update CHANGELOG & patch_notes for $DATE [skip ci]"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
