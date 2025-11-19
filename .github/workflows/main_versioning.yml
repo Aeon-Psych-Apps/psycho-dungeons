@@ -2,8 +2,8 @@ name: Release on Main Merge
 
 on:
   pull_request:
-    branches: [ "main" ]
-    types: [ "closed" ]
+    branches: ["main"]
+    types: [closed]
 
 jobs:
   release:
@@ -11,39 +11,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout the merged commit (post-merge main)
-      - name: Checkout merged result
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Checkout the base branch (main BEFORE merge) into a subfolder
-      - name: Checkout main pre-merge
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.base.ref }}
-          path: premerge
-          fetch-depth: 0
-
-      # 3. Read version from pre-merge config/config.json
-      - name: Extract version
-        id: version
+      - name: Read pre-merge version from main
+        id: pre_merge_version
         run: |
-          VERSION=$(jq -r '.github_version' premerge/config/config.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          git fetch origin main
+          git checkout main
+          PRE_VERSION=$(jq -r '.github_version' config/config.json)
+          echo "pre_version=$PRE_VERSION" >> $GITHUB_OUTPUT
 
-      # 4. Copy pre-merge latest.json and version it
-      - name: Version pre-merge latest.json
+      - name: Save pre-merge latest.json to releases
         run: |
           mkdir -p releases
-          cp premerge/latest.json releases/psycho-dungeons_${{ steps.version.outputs.version }}.json
-
-      # 5. Commit and push new release file
-      - name: Commit release file
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          git add releases/
-          git commit -m "Release version ${{ steps.version.outputs.version }}"
+          cp latest.json releases/${{ steps.pre_merge_version.outputs.pre_version }}.json
+          git add releases/${{ steps.pre_merge_version.outputs.pre_version }}.json
+          git commit -m "internal: Archive pre-merge version ${{ steps.pre_merge_version.outputs.pre_version }}"
           git push
+
+      - name: Read new github_version from config.json
+        id: new_version
+        run: |
+          NEW_VERSION=$(jq -r '.github_version' config/config.json)
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.new_version.outputs.new_version }}
+          release_name: Release ${{ steps.new_version.outputs.new_version }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
