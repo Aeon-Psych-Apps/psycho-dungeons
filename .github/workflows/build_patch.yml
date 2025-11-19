@@ -81,37 +81,38 @@ jobs:
 
           # Only create versioned JSON if running on main with a tag
           tag = os.environ.get('GITHUB_REF', '')
-          if os.environ.get('GITHUB_REF_NAME') and os.environ.get('GITHUB_REF').startswith('refs/tags/'):
+          if os.environ.get('GITHUB_REF_NAME') and tag.startswith('refs/tags/') and os.environ.get('GITHUB_REF_NAME') == os.environ.get('GITHUB_REF'):
               version = tag.replace('refs/tags/', '')
               with open(f'releases/{version}.json', 'w', encoding='utf-8') as f:
                   json.dump(patch_json, f, indent=2)
           EOF
 
-      - name: Debug commits since last merge
+      - name: Debug commits on branch
         run: |
           TZ="America/Phoenix"
           DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
-          PREV_MAIN=$(git merge-base HEAD origin/main 2>/dev/null || git rev-list --max-parents=0 HEAD)
-          echo "Using PREV_MAIN: $PREV_MAIN"
-          echo "=== Commits since last merge ==="
-          git log ${PREV_MAIN}..HEAD --pretty=format:"%H %s%n%b%n---" || echo "No commits found"
+          echo "Current Phoenix timestamp: $DATE"
+
+          # Grab all commits on current branch (HEAD)
+          echo "=== Commits on branch ${{ github.event.inputs.branch }} ==="
+          git log --no-merges --pretty=format:"%H %s%n%b%n---"
 
       - name: Update CHANGELOG.md & patch_notes.md
         run: |
           TZ="America/Phoenix"
           DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
-          PREV_MAIN=$(git merge-base HEAD origin/main 2>/dev/null || git rev-list --max-parents=0 HEAD)
 
-          COMMITS=$(git log ${PREV_MAIN}..HEAD --pretty=format:"%s%n%b" | awk '
+          # All commits on the current branch (exclude merges)
+          COMMITS=$(git log --no-merges --pretty=format:"%s%n%b" | awk '
             BEGIN { RS=""; FS="\n"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
             {
               subject=$1;
+              # Exclude commits with internal:
               if(tolower(subject) ~ /^internal:/) next;
               entry="- " subject "\n";
               for(i=2;i<=NF;i++){
                 if($i != "") entry=entry"    - "$i"\n";
               }
-              # Match any prefix case-insensitively
               if(tolower(subject) ~ /^feature:/) { gsub(/^[Ff][Ee][Aa][Tt][Uu][Rr][Ee]:[ ]*/,"",entry); features=features entry "\n"; }
               else if(tolower(subject) ~ /^fix:/) { gsub(/^[Ff][Ii][Xx]:[ ]*/,"",entry); fixes=fixes entry "\n"; }
               else if(tolower(subject) ~ /^patch:/) { gsub(/^[Pp][Aa][Tt][Cc][Hh]:[ ]*/,"",entry); patches=patches entry "\n"; }
@@ -125,6 +126,7 @@ jobs:
             }
           ')
 
+          # Write to CHANGELOG
           {
             echo "[$DATE]"
             echo ""
@@ -135,6 +137,7 @@ jobs:
           if [ ! -f manual/patch_notes.md ]; then
             echo "# Patch Notes" > manual/patch_notes.md
           fi
+
           # Prepend new changelog to patch_notes
           cat CHANGELOG.md manual/patch_notes.md > manual/tmp_patch_notes.md
           mv manual/tmp_patch_notes.md manual/patch_notes.md
