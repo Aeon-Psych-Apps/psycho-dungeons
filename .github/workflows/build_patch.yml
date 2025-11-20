@@ -42,38 +42,38 @@ jobs:
               BEGIN { RS="\n"; FS="\t"; ORS=""; out="" }
               {
                   author=$1; subject=$2; body=$3;
-          
+
                   # skip internal/workflow commits
                   if(author==bot) next;
                   lc_subject=tolower(subject);
                   if(lc_subject ~ /^internal:/) next;
                   if(lc_subject ~ /^update changelog/) next;
                   if(lc_subject ~ /\[skip ci\]/) next;
-          
+
                   # format body lines
                   body_text=""
                   n=split(body, lines, "\n")
                   for(i=1;i<=n;i++){
                       if(lines[i]!="") body_text=body_text"    - "lines[i]"\n";
                   }
-          
+
                   key=subject body_text;
                   if(seen[key]++) next;
-          
+
                   out = out "- " subject "\n" body_text "\n";
               }
               END { print out }
           ')
-        
+
           echo "log<<EOF" >> $GITHUB_OUTPUT
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Prepend entries to CHANGELOG.md and append patch_notes.md
+      - name: Prepend commits and append patch_notes.md to CHANGELOG.md
         run: |
           DATE="$(TZ=America/Phoenix date +"%m/%d/%Y %H:%M %Z")"
 
-          # ensure patch_notes.md exists
+          # Ensure patch_notes.md exists
           mkdir -p manual
           if [ ! -f manual/patch_notes.md ]; then
             echo "# Patch Notes" > manual/patch_notes.md
@@ -163,7 +163,7 @@ jobs:
           git add CHANGELOG.md latest.json
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update CHANGELOG and latest.json [skip ci]"
+            git commit -m "internal: Update CHANGELOG and latest.json [skip ci]"
             git push
           else
             echo "No changes to commit"
