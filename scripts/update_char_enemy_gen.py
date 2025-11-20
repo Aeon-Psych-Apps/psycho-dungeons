@@ -7,7 +7,7 @@ def main(input):
     enemy_base_stats = input.get('enemy_base_stats')
     spawn_type = input.get('type', 'enemy')  # 'enemy' or 'boss'
 
-    # --- Fetch player character ---
+    # Fetch player character
     char = next((c for c in player['characters'] if c['char_id'] == char_id), None)
     if not char:
         raise ValueError('Character not found.')
@@ -22,38 +22,41 @@ def main(input):
     player_spd = stats.get('spd', 5)
     player_luck = stats.get('luck', 1)
 
-    # --- Player total attack including gear ---
+    # Calculate player total attack including gear
     player_total_atk = player_atk + sum(
         sum(eq.get('stats', {}).values()) for eq in char.get('equipment', [])
     )
 
-    # --- Enemy role modifiers ---
+    # Enemy role modifiers
     if spawn_type == 'boss':
         level_variation = random.randint(player_level, player_level + 2)
         hp_multiplier_range = (3, 10)
-        dmg_pct_range = (0.02, 0.10)  # 2-10% of player max HP
+        dmg_pct_range = (0.02, 0.10)
     else:
         level_variation = random.randint(max(1, player_level - 1), player_level + 1)
         hp_multiplier_range = (1, 3)
-        dmg_pct_range = (0.01, 0.05)  # 1-5% of player max HP
+        dmg_pct_range = (0.01, 0.05)
 
-    # --- Expected player damage vs enemy ---
-    # Include gear and small buffer for crits/randomness
-    expected_player_dmg = player_total_atk * 1.05  # ~5% buffer
+    # Expected player damage
+    expected_player_dmg = player_total_atk * 1.05
 
-    # --- Enemy HP scaling ---
+    # Enemy HP
     enemy_hp = max(10, int(expected_player_dmg * random.uniform(*hp_multiplier_range)))
 
-    # --- Enemy damage per turn ---
+    # Enemy damage
     enemy_damage = int(player_max_hp * random.uniform(*dmg_pct_range))
 
-    # --- Enemy SPD and Luck scaling ---
+    # Speed and Luck scaling
     enemy_spd = max(1, int(player_spd * random.uniform(0.9, 1.1)))
     enemy_luck = max(0, int(player_luck * random.uniform(0.8, 1.2)))
 
-    # --- Build enemy object ---
+    # Build readable tags
+    name_prefix = "Boss " if spawn_type == "boss" else ""
+    label = "Boss" if spawn_type == "boss" else "Enemy"
+
+    # Build enemy object
     enemy_obj = {
-        'name': f'{'Boss ' if spawn_type=='boss' else ''}{base_key}',
+        'name': f"{name_prefix}{base_key}",
         'level': level_variation,
         'max_hp': enemy_hp,
         'current_hp': enemy_hp,
@@ -67,13 +70,19 @@ def main(input):
         'experience': int(base_stats.get('exp', 10) * (2 if spawn_type == 'boss' else 1)),
     }
 
-    # --- Attach to current map if applicable ---
+    # Attach enemy to active map if present
     if 'current_map' in char:
         char['current_map']['enemy'] = enemy_obj
+
+    # Final message
+    message = (
+        f"Generated {label} {base_key} "
+        f"(Lvl {level_variation}, HP {enemy_hp}, Damage {enemy_damage}, "
+        f"SPD {enemy_spd}, Luck {enemy_luck})"
+    )
 
     return {
         'player': player,
         'generated_enemy': enemy_obj,
-        'message': f'Generated {'Boss' if spawn_type=='boss' else 'Enemy'} '{base_key}' '
-                   f'(Lvl {enemy_obj['level']}, HP {enemy_obj['max_hp']}, Damage {enemy_obj['damage']}, SPD {enemy_obj['stats']['spd']}, Luck {enemy_obj['stats']['luck']})'
+        'message': message
     }
