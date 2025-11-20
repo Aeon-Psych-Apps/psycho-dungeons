@@ -20,7 +20,7 @@ def main(input):
     # === Locate character ===
     character = next((c for c in player.get('characters', []) if c.get('name') == character_name), None)
     if not character:
-        return {'error': f'Character '{character_name}' not found.'}
+        return {'error': f"Character '{character_name}' not found."}
 
     # === Helper to find item in inventory or equipment ===
     def find_item(lists):
@@ -37,7 +37,7 @@ def main(input):
 
     lst_name, idx, item = find_item(lists_to_search)
     if not item:
-        return {'error': f'Item '{sale_id}' not found in inventory or equipment.'}
+        return {'error': f"Item '{sale_id}' not found in inventory or equipment."}
 
     # === Handle gold transfer ===
     item_value = item.get('value', 0)
