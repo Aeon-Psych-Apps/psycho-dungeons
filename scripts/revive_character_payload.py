@@ -11,7 +11,7 @@ def main(input):
     )
 
     if not character:
-        return {'error': f'No character found with id '{character_id}'', 'player': player}
+        return {'error': f"No character found with id '{character_id}'", 'player': player}
 
     # Look for an elixir in the inventory
     inventory = character.get('inventory', [])
