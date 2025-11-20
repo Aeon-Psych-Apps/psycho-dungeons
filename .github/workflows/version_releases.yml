@@ -1,0 +1,46 @@
+name: Create Versioned Release File
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout test branch
+        uses: actions/checkout@v4
+        with:
+          ref: test
+          fetch-depth: 0
+
+      - name: Read github_version from latest.json in test
+        id: version
+        run: |
+          VERSION=$(jq -r '.github_version' latest.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Skip if version file already exists
+        run: |
+          FILE="releases/v${{ steps.version.outputs.version }}.json"
+          if [ -f "$FILE" ]; then
+            echo "Version $FILE already exists. Skipping commit."
+            echo "skip=true" >> $GITHUB_ENV
+          fi
+
+      - name: Create versioned file
+        if: env.skip != 'true'
+        run: |
+          mkdir -p releases
+          cp latest.json "releases/v${{ steps.version.outputs.version }}.json"
+
+      - name: Commit version file (internal)
+        if: env.skip != 'true'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add releases/
+          git commit -m "internal: add release v${{ steps.version.outputs.version }}"
+          git push origin test
