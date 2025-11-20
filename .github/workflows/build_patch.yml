@@ -35,23 +35,37 @@ jobs:
         id: commits
         run: |
           START=${{ steps.lastmerge.outputs.last_merge }}
-          LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%an%x09%s%x09%b" | awk -v bot="github-actions[bot]" '
-            BEGIN { RS="\n"; FS="\t"; ORS=""; out=""; }
+          LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
+            BEGIN { RS="\n"; FS="\t"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
             {
-              author=$1; subject=$2; body=$3;
-              if(author==bot) next;
-              lc_subject=tolower(subject);
-              if(lc_subject ~ /^internal:/) next;
-              if(lc_subject ~ /^update changelog/) next;
-              if(lc_subject ~ /\[skip ci\]/) next;
-              body_text=""
-              n=split(body, lines, "\n")
-              for(i=1;i<=n;i++){ if(lines[i]!="") body_text=body_text"    - "lines[i]"\n"; }
-              key=subject body_text;
-              if(seen[key]++) next;
-              out = out "- " subject "\n" body_text "\n";
+              subject=$1; body="";
+              if(NF>1){ for(i=2;i<=NF;i++){ if($i!="") body=body"    - "$i"\n"; } }
+
+              lc_subject=tolower(subject)
+              if(lc_subject ~ /^internal:/) next
+              if(lc_subject ~ /^update changelog/ || lc_subject ~ /\[skip ci\]/) next
+
+              key = subject body
+              if(seen[key]++) next
+
+              entry="- " subject "\n" body
+
+              if(lc_subject ~ /^feature:/){
+                sub(/^feature:[ ]*/i,"",entry); features=features entry "\n"
+              } else if(lc_subject ~ /^fix:/){
+                sub(/^fix:[ ]*/i,"",entry); fixes=fixes entry "\n"
+              } else if(lc_subject ~ /^patch:/){
+                sub(/^patch:[ ]*/i,"",entry); patches=patches entry "\n"
+              } else {
+                misc=misc entry "\n"
+              }
             }
-            END { print out }
+            END {
+              if(features!="") print "### Features\n" features "\n"
+              if(fixes!="") print "### Fixes\n" fixes "\n"
+              if(patches!="") print "### Patches\n" patches "\n"
+              if(misc!="") print "### Misc\n" misc "\n"
+            }
           ')
           echo "log<<EOF" >> $GITHUB_OUTPUT
           echo "$LOG" >> $GITHUB_OUTPUT
@@ -65,7 +79,14 @@ jobs:
             echo "# Patch Notes" > manual/patch_notes.md
           fi
 
-          printf "[%s]\n\n%s\n" "$DATE" "${{ steps.commits.outputs.log }}" > CHANGELOG.tmp
+          # Prepend categorized commits to CHANGELOG.md
+          {
+            echo "[$DATE]"
+            echo ""
+            echo "${{ steps.commits.outputs.log }}"
+          } > CHANGELOG.tmp
+
+          # Append existing patch_notes
           cat manual/patch_notes.md >> CHANGELOG.tmp
           echo "" >> CHANGELOG.tmp
           mv CHANGELOG.tmp CHANGELOG.md
@@ -126,10 +147,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add CHANGELOG.md latest.json
+          git add CHANGELOG.md manual/patch_notes.md latest.json
 
           if ! git diff --cached --quiet; then
-            git commit -m "internal: Update CHANGELOG and latest.json [skip ci]"
+            git commit -m "Update CHANGELOG & patch_notes for $DATE [skip ci]"
             git push
           else
             echo "No changes to commit"
