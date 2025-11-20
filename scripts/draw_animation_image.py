@@ -36,7 +36,7 @@ def main(input):
         logic_to_image['player'] = 'warrior_player_idle.gif'
     elif char_class == 'Rogue':
         logic_to_image['player'] = 'rogue_player_idle.gif'
-    elif char_class == 'Mage':
+    elif char_class == 'Skeleton':
         logic_to_image['player'] = 'skeleton_player_movement.gif'
     else:
         logic_to_image['player'] = 'skeleton_player_idle.gif'
