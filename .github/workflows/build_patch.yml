@@ -65,7 +65,6 @@ jobs:
             echo "# Patch Notes" > manual/patch_notes.md
           fi
 
-          # Use printf instead of { } to avoid bash block parsing issues
           printf "[%s]\n\n%s\n" "$DATE" "${{ steps.commits.outputs.log }}" > CHANGELOG.tmp
           cat manual/patch_notes.md >> CHANGELOG.tmp
           echo "" >> CHANGELOG.tmp
@@ -134,3 +133,4 @@ jobs:
             git push
           else
             echo "No changes to commit"
+          fi
