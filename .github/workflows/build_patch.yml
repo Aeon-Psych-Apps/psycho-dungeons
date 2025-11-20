@@ -35,7 +35,7 @@ jobs:
         id: commits
         run: |
           START=${{ steps.lastmerge.outputs.last_merge }}
-          LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
+          LOG=$(git log ${START}^..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
             BEGIN { RS="\n"; FS="\t"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
             {
               subject=$1; body="";
@@ -73,6 +73,9 @@ jobs:
 
       - name: Prepend entries to CHANGELOG.md
         run: |
+          # Read version from config.json
+          VERSION=$(python3 -c "import json; print(json.load(open('config/config.json'))['github_version'])")
+          
           DATE="$(TZ=America/Phoenix date +"%m/%d/%Y %H:%M %Z")"
           mkdir -p manual
           if [ ! -f manual/patch_notes.md ]; then
@@ -81,12 +84,14 @@ jobs:
 
           # Prepend categorized commits to CHANGELOG.md
           {
-            echo "[$DATE]"
+            echo "$VERSION - [$DATE]"
             echo ""
             echo "${{ steps.commits.outputs.log }}"
           } > CHANGELOG.tmp
 
           # Append existing patch_notes
+          echo "" >> CHANGELOG.tmp
+          echo "---" >> CHANGELOG.tmp
           cat manual/patch_notes.md >> CHANGELOG.tmp
           echo "" >> CHANGELOG.tmp
           mv CHANGELOG.tmp CHANGELOG.md
