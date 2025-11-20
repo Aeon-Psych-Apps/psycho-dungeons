@@ -1,12 +1,14 @@
 name: Create Versioned Release File
 
 on:
-  push:
+  pull_request:
+    types: [closed]   # Only run when a PR is closed
     branches:
-      - main  # Triggered after merge to main
+      - main          # PR targeting main
 
 jobs:
   release_version:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'test'
     runs-on: ubuntu-latest
 
     steps:
