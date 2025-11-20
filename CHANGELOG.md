@@ -1,6 +1,33 @@
-[11/20/2025 03:24 MST]
+[11/20/2025 03:29 MST]
 
+### Features
+- FEATURE: latest
+    - - Added patch_notes page to manual
+
+- FEATURE: patch_notes
+    - - Added patch_notes page to manual
+
+
+### Patches
+- PATCH: Update loot_generator.py
+    - - Updated drop chance for consumables. 50% potion, 25% antidote, 5% elixir to 50% potion, 25% antidote, 25% elixir.
+
+- PATCH: Update class Mage to skeleton in roll_player_stats.py
+    - - Updated character class from mage to skeleton
+
+- PATCH: Update patch_notes version 1.0.1
+    - - Updated patch notes manual page for 1.0.1 changes
+
+- PATCH: Update config.json
+    - - Updated config to version 1.0.1
+
+
+### Misc
 - 
+
+- * internal: Update build_patch.yml (#7)
+
+- * internal: Update build_patch.yml
 
 - Rename rogue__player_idle.gif to rogue_player_idle.gif
     - Fixed typo in the name
@@ -59,26 +86,16 @@
 - Rename warrior_idle.gif to warrior_player_idle.gif
     - Renamed warrior image to be player specific (right facing)
 
-- PATCH: Update loot_generator.py
-    - - Updated drop chance for consumables. 50% potion, 25% antidote, 5% elixir to 50% potion, 25% antidote, 25% elixir.
+- - Fixed other minor inconsistencies with loot stat scaling
 
-- PATCH: Update class Mage to skeleton in roll_player_stats.py
-    - - Updated character class from mage to skeleton
+- - Removed folder_id (story/client should now be overwriting anyways
 
-- PATCH: Update patch_notes version 1.0.1
-    - - Updated patch notes manual page for 1.0.1 changes
+- - Removed patch url and auth. Patch system migrated off Tines to GitHub instance for better long term reliability.
 
-- PATCH: Update config.json
-    - - Updated config to version 1.0.1
-
-- FEATURE: latest
-    - - Added patch_notes page to manual
+- - Including patch notes log up to current patch, including those made before switch to github
 
 - Delete manual/latest.json
     - wrong directory
-
-- FEATURE: patch_notes
-    - - Added patch_notes page to manual
 
 - Update <file-name> via Tines
 
