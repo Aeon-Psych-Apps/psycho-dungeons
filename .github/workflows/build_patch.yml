@@ -1,15 +1,11 @@
-name: Build Tines Patch JSON & Update Changelog
+name: Build latest.json & Update Changelog
 
 on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to run the workflow on'
-        required: true
-        default: 'test'
+  push:
+    branches: [ "test" ]
 
 jobs:
-  build_patch:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,160 +13,157 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.branch }}
+          ref: test
 
-      - name: Verify branch
+      - name: Ensure correct branch
         run: |
-          if [ "${{ github.event.inputs.branch }}" != "test" ] && [ "${{ github.event.inputs.branch }}" != "main" ]; then
-            echo "Workflow only runs for the test or main branch."
+          if [ "$(git rev-parse --abbrev-ref HEAD)" != "test" ]; then
+            echo "Not on test branch. Exiting."
             exit 0
           fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Install dependencies
+      - name: Find last merge of test into main
+        id: lastmerge
         run: |
-          python -m pip install --upgrade pip
-          pip install python-magic pytz
+          LAST=$(git log main..test --merges --pretty=format:"%H" | head -n 1)
 
-      - name: Generate latest.json (and versioned JSON if on main with tag)
+          if [ -z "$LAST" ]; then
+            LAST=$(git rev-list --max-parents=0 test)
+          fi
+
+          echo "last_merge=$LAST" >> $GITHUB_OUTPUT
+
+      - name: Generate commit entries since last merge
+        id: commits
         run: |
-          python - <<'EOF'
-          import os, json, base64, mimetypes
+          START=${{ steps.lastmerge.outputs.last_merge }}
 
-          config_file = 'config/config.json'
-          scripts_dir = 'scripts'
-          images_dir = 'images'
-          manual_dir = 'manual'
+          LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%an%x09%s%x09%b" | awk -v bot="github-actions[bot]" '
+              BEGIN { RS="\n"; FS="\t"; ORS=""; out=""; seen=0 }
+              {
+                  author=$1; subject=$2; body=$3;
 
-          with open(config_file, 'r', encoding='utf-8') as f:
-              config = json.load(f)
+                  # skip internal/workflow commits
+                  if(author==bot) next;
+                  lc_subject=tolower(subject);
+                  if(lc_subject ~ /^internal:/) next;
+                  if(lc_subject ~ /^update changelog/) next;
+                  if(lc_subject ~ /\[skip ci\]/) next;
 
-          scripts = []
-          for file in os.listdir(scripts_dir):
-              if file.endswith('.py'):
-                  name_only = os.path.splitext(file)[0]
-                  with open(os.path.join(scripts_dir, file), 'r', encoding='utf-8') as f:
-                      scripts.append({"name": name_only, "contents": f.read()})
+                  # format body lines
+                  body_text=""
+                  n=split(body, lines, "\n")
+                  for(i=1;i<=n;i++){
+                      if(lines[i]!="") body_text=body_text"    - "lines[i]"\n";
+                  }
 
-          manual = []
-          for file in os.listdir(manual_dir):
-              if file.endswith('.md'):
-                  name_only = os.path.splitext(file)[0]
-                  with open(os.path.join(manual_dir, file), 'r', encoding='utf-8') as f:
-                      manual.append({"name": name_only, "contents": f.read()})
+                  key=subject body_text;
+                  if(seen[key]++) next;
 
-          images = []
-          for file in os.listdir(images_dir):
-              path = os.path.join(images_dir, file)
-              mime_type, _ = mimetypes.guess_type(path)
-              if not mime_type:
-                  mime_type = 'application/octet-stream'
-              with open(path, 'rb') as f:
-                  b64 = base64.b64encode(f.read()).decode('utf-8')
-              images.append({"name": file, "type": mime_type, "contents": b64, "display_logo": True})
-
-          patch_json = {"config": config, "scripts": scripts, "images": images, "manual": manual}
-
-          os.makedirs('releases', exist_ok=True)
-          with open('latest.json', 'w', encoding='utf-8') as f:
-              json.dump(patch_json, f, indent=2)
-
-          # Only create versioned JSON if running on main with a tag
-          tag = os.environ.get('GITHUB_REF', '')
-          if os.environ.get('GITHUB_REF_NAME') and tag.startswith('refs/tags/') and os.environ.get('GITHUB_REF_NAME') == os.environ.get('GITHUB_REF'):
-              version = tag.replace('refs/tags/', '')
-              with open(f'releases/{version}.json', 'w', encoding='utf-8') as f:
-                  json.dump(patch_json, f, indent=2)
-          EOF
-
-      - name: Debug commits on branch
-        run: |
-          TZ="America/Phoenix"
-          DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
-          echo "Phoenix timestamp: $DATE"
-
-          echo "=== Full commit log for debugging ==="
-          git log --no-merges --pretty=format:"%H %s%n%b%n---"
-
-      - name: Update CHANGELOG.md & patch_notes.md
-        run: |
-          TZ="America/Phoenix"
-          DATE=$(TZ=$TZ date +"%m/%d/%Y %H:%M %Z")
-          echo "Phoenix timestamp: $DATE"
-
-          # Process commits and categorize
-          COMMITS=$(git log --no-merges --pretty=format:"%s%n%b%n---" | awk '
-            BEGIN { RS="\n---\n"; FS="\n"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
-            {
-              subject=$1;
-              body="";
-              if(NF>1){ for(i=2;i<=NF;i++){ if($i!="") body=body"    - "$i"\n"; } }
-          
-              # Skip internal/changelog commits
-              lc_subject=tolower(subject);
-              if(lc_subject ~ /^internal:/) next;
-              if(lc_subject ~ /^update changelog/ || lc_subject ~ /^create patch_notes/ || lc_subject ~ /\[skip ci\]/) next;
-          
-              # Skip duplicates
-              key = subject body;
-              if(seen[key]++) next;
-          
-              # Determine category and create bullets/subpoints
-              entry="- " subject "\n" body;
-              if(lc_subject ~ /^feature:/){
-                sub(/^feature:[ ]*/i,"",entry);
-                features=features entry "\n";
-              } else if(lc_subject ~ /^fix:/){
-                sub(/^fix:[ ]*/i,"",entry);
-                fixes=fixes entry "\n";
-              } else if(lc_subject ~ /^patch:/){
-                sub(/^patch:[ ]*/i,"",entry);
-                patches=patches entry "\n";
-              } else {
-                misc=misc entry "\n";
+                  out = out "- " subject "\n" body_text "\n";
               }
-            }
-            END {
-              if(features!="") print "### Features\n" features "\n";
-              if(fixes!="") print "### Fixes\n" fixes "\n";
-              if(patches!="") print "### Patches\n" patches "\n";
-              if(misc!="") print "### Misc\n" misc "\n";
-            }
+              END { print out }
           ')
 
-          echo "=== Processed changelog output ==="
-          echo "$COMMITS"
+          echo "log<<EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-          # Write to CHANGELOG.md
-          {
-            echo "[$DATE]"
-            echo ""
-            echo "$COMMITS"
-          } > CHANGELOG.md
+      - name: Prepend entries to CHANGELOG.md and append patch_notes.md
+        run: |
+          DATE="$(TZ=America/Phoenix date +"%m/%d/%Y %H:%M %Z")"
 
+          # ensure patch_notes.md exists
           mkdir -p manual
           if [ ! -f manual/patch_notes.md ]; then
             echo "# Patch Notes" > manual/patch_notes.md
           fi
 
-          # Prepend new changelog to patch_notes
-          cat CHANGELOG.md manual/patch_notes.md > manual/tmp_patch_notes.md
-          mv manual/tmp_patch_notes.md manual/patch_notes.md
-          echo "" >> manual/patch_notes.md
+          # Prepend commits and append patch_notes
+          {
+            echo "[$DATE]"
+            echo ""
+            echo "${{ steps.commits.outputs.log }}"
+            cat manual/patch_notes.md
+            echo ""
+          } > CHANGELOG.tmp
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          mv CHANGELOG.tmp CHANGELOG.md
 
-          git add CHANGELOG.md manual/patch_notes.md latest.json
-          git add releases/*.json 2>/dev/null || true
+      - name: Build latest.json
+        run: |
+          python3 <<'EOF'
+          import os, json, base64, mimetypes
+
+          def read_text(path):
+              with open(path, "r", encoding="utf-8") as f:
+                  return f.read()
+
+          def read_files(dir_path, exts=None):
+              files_data = []
+              for file in os.listdir(dir_path):
+                  if exts and not any(file.endswith(e) for e in exts):
+                      continue
+                  path = os.path.join(dir_path, file)
+                  if os.path.isdir(path):
+                      continue
+                  with open(path, "rb") as f:
+                      b64 = base64.b64encode(f.read()).decode("utf-8")
+                  mime_type, _ = mimetypes.guess_type(path)
+                  if not mime_type:
+                      mime_type = "application/octet-stream"
+                  files_data.append({"name": file, "type": mime_type, "contents": b64, "display_logo": True})
+              return files_data
+
+          # Config
+          with open("config/config.json", "r", encoding="utf-8") as f:
+              config = json.load(f)
+
+          # Scripts
+          scripts = []
+          for f in os.listdir("scripts"):
+              if f.endswith(".py"):
+                  scripts.append({
+                      "name": f.replace(".py",""),
+                      "contents": read_text(os.path.join("scripts", f))
+                  })
+
+          # Manual
+          manual = []
+          for f in os.listdir("manual"):
+              if f.endswith(".md"):
+                  manual.append({
+                      "name": f.replace(".md",""),
+                      "contents": read_text(os.path.join("manual", f))
+                  })
+
+          # Images
+          images = read_files("images")
+
+          # CHANGELOG
+          change_log = {"contents": read_text("CHANGELOG.md")}
+
+          latest = {
+              "config": config,
+              "scripts": scripts,
+              "images": images,
+              "manual": manual,
+              "change_log": change_log
+          }
+
+          with open("latest.json", "w", encoding="utf-8") as f:
+              json.dump(latest, f, indent=2)
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md latest.json
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update CHANGELOG & patch_notes for $DATE [skip ci]"
-            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git commit -m "Update CHANGELOG and latest.json [skip ci]"
+            git push
           else
             echo "No changes to commit"
-          fi
