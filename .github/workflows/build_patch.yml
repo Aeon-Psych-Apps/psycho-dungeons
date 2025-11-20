@@ -39,32 +39,32 @@ jobs:
           START=${{ steps.lastmerge.outputs.last_merge }}
 
           LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%an%x09%s%x09%b" | awk -v bot="github-actions[bot]" '
-              BEGIN { RS="\n"; FS="\t"; ORS=""; out=""; seen=0 }
+              BEGIN { RS="\n"; FS="\t"; ORS=""; out="" }
               {
                   author=$1; subject=$2; body=$3;
-
+          
                   # skip internal/workflow commits
                   if(author==bot) next;
                   lc_subject=tolower(subject);
                   if(lc_subject ~ /^internal:/) next;
                   if(lc_subject ~ /^update changelog/) next;
                   if(lc_subject ~ /\[skip ci\]/) next;
-
+          
                   # format body lines
                   body_text=""
                   n=split(body, lines, "\n")
                   for(i=1;i<=n;i++){
                       if(lines[i]!="") body_text=body_text"    - "lines[i]"\n";
                   }
-
+          
                   key=subject body_text;
                   if(seen[key]++) next;
-
+          
                   out = out "- " subject "\n" body_text "\n";
               }
               END { print out }
           ')
-
+        
           echo "log<<EOF" >> $GITHUB_OUTPUT
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
