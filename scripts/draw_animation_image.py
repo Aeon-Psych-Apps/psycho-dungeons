@@ -17,9 +17,9 @@ def main(input):
     logic_to_image = {
         'gray': 'Gray50.png',
         'player': 'player1_idle32.gif',
-        'enemy': 'skeleton1_idle.gif',
-        'boss': 'vampire_idle.gif',
-        'enemy_resolved': 'skeleton1_death_still.gif',
+        'enemy': 'skeleton_enemy_idle.gif',
+        'boss': 'vampire_enemy_idle.gif',
+        'enemy_resolved': 'skeleton_enemy_death_still.gif',
         'npc': 'aeonpsEDM50.gif',
         'npc_resolved': 'Trans50.png',
         'rest': 'bed.png',
@@ -33,13 +33,13 @@ def main(input):
 
     # Assign correct player image by class
     if char_class == 'Warrior':
-        logic_to_image['player'] = 'warrior_idle.gif'
+        logic_to_image['player'] = 'warrior_player_idle.gif'
     elif char_class == 'Rogue':
-        logic_to_image['player'] = 'rogue_Idle.gif'
+        logic_to_image['player'] = 'rogue_player_idle.gif'
     elif char_class == 'Mage':
-        logic_to_image['player'] = 'skeleton2_movement.gif'
+        logic_to_image['player'] = 'skeleton_player_movement.gif'
     else:
-        logic_to_image['player'] = 'skeleton2_idle.gif'
+        logic_to_image['player'] = 'skeleton_player_idle.gif'
 
     no_scale_images = {
         logic_to_image['ladder'],
