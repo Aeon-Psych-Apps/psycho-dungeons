@@ -26,68 +26,49 @@ jobs:
         id: lastmerge
         run: |
           LAST=$(git log main..test --merges --pretty=format:"%H" | head -n 1)
-
           if [ -z "$LAST" ]; then
             LAST=$(git rev-list --max-parents=0 test)
           fi
-
           echo "last_merge=$LAST" >> $GITHUB_OUTPUT
 
       - name: Generate commit entries since last merge
         id: commits
         run: |
           START=${{ steps.lastmerge.outputs.last_merge }}
-
           LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%an%x09%s%x09%b" | awk -v bot="github-actions[bot]" '
-              BEGIN { RS="\n"; FS="\t"; ORS=""; out=""; seen=0 }
-              {
-                  author=$1; subject=$2; body=$3;
-
-                  # skip internal/workflow commits
-                  if(author==bot) next;
-                  lc_subject=tolower(subject);
-                  if(lc_subject ~ /^internal:/) next;
-                  if(lc_subject ~ /^update changelog/) next;
-                  if(lc_subject ~ /\[skip ci\]/) next;
-
-                  # format body lines
-                  body_text=""
-                  n=split(body, lines, "\n")
-                  for(i=1;i<=n;i++){
-                      if(lines[i]!="") body_text=body_text"    - "lines[i]"\n";
-                  }
-
-                  key=subject body_text;
-                  if(seen[key]++) next;
-
-                  out = out "- " subject "\n" body_text "\n";
-              }
-              END { print out }
+            BEGIN { RS="\n"; FS="\t"; ORS=""; out=""; }
+            {
+              author=$1; subject=$2; body=$3;
+              if(author==bot) next;
+              lc_subject=tolower(subject);
+              if(lc_subject ~ /^internal:/) next;
+              if(lc_subject ~ /^update changelog/) next;
+              if(lc_subject ~ /\[skip ci\]/) next;
+              body_text=""
+              n=split(body, lines, "\n")
+              for(i=1;i<=n;i++){ if(lines[i]!="") body_text=body_text"    - "lines[i]"\n"; }
+              key=subject body_text;
+              if(seen[key]++) next;
+              out = out "- " subject "\n" body_text "\n";
+            }
+            END { print out }
           ')
-
           echo "log<<EOF" >> $GITHUB_OUTPUT
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Prepend entries to CHANGELOG.md and append patch_notes.md
+      - name: Prepend entries to CHANGELOG.md
         run: |
           DATE="$(TZ=America/Phoenix date +"%m/%d/%Y %H:%M %Z")"
-
-          # ensure patch_notes.md exists
           mkdir -p manual
           if [ ! -f manual/patch_notes.md ]; then
             echo "# Patch Notes" > manual/patch_notes.md
           fi
 
-          # Prepend commits and append patch_notes
-          {
-            echo "[$DATE]"
-            echo ""
-            echo "${{ steps.commits.outputs.log }}"
-            cat manual/patch_notes.md
-            echo ""
-          } > CHANGELOG.tmp
-
+          # Use printf instead of { } to avoid bash block parsing issues
+          printf "[%s]\n\n%s\n" "$DATE" "${{ steps.commits.outputs.log }}" > CHANGELOG.tmp
+          cat manual/patch_notes.md >> CHANGELOG.tmp
+          echo "" >> CHANGELOG.tmp
           mv CHANGELOG.tmp CHANGELOG.md
 
       - name: Build latest.json
@@ -115,32 +96,17 @@ jobs:
                   files_data.append({"name": file, "type": mime_type, "contents": b64, "display_logo": True})
               return files_data
 
-          # Config
           with open("config/config.json", "r", encoding="utf-8") as f:
               config = json.load(f)
 
-          # Scripts
-          scripts = []
-          for f in os.listdir("scripts"):
-              if f.endswith(".py"):
-                  scripts.append({
-                      "name": f.replace(".py",""),
-                      "contents": read_text(os.path.join("scripts", f))
-                  })
+          scripts = [{"name": os.path.splitext(f)[0], "contents": read_text(os.path.join("scripts", f))}
+                     for f in os.listdir("scripts") if f.endswith(".py")]
 
-          # Manual
-          manual = []
-          for f in os.listdir("manual"):
-              if f.endswith(".md"):
-                  manual.append({
-                      "name": f.replace(".md",""),
-                      "contents": read_text(os.path.join("manual", f))
-                  })
+          manual = [{"name": os.path.splitext(f)[0], "contents": read_text(os.path.join("manual", f))}
+                    for f in os.listdir("manual") if f.endswith(".md")]
 
-          # Images
           images = read_files("images")
 
-          # CHANGELOG
           change_log = {"contents": read_text("CHANGELOG.md")}
 
           latest = {
@@ -157,13 +123,14 @@ jobs:
 
       - name: Commit and push
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add CHANGELOG.md latest.json
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update CHANGELOG and latest.json [skip ci]"
+            git commit -m "internal: Update CHANGELOG and latest.json [skip ci]"
             git push
           else
             echo "No changes to commit"
