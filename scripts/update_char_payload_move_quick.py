@@ -19,6 +19,6 @@ def main(input):
 
     # Fallback (character not found)
     return {
-        'error': f'Character '{char_id}' not found.',
+        'error': f"Character '{char_id}' not found.",
         'player': player_data
     }
