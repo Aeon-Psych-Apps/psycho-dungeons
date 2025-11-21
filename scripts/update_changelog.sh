@@ -12,7 +12,15 @@ else
 fi
 
 # 2. Gather commits newer than LAST
-COMMITS=$(git log "${LAST}..HEAD" --reverse --no-merges --pretty=format:"%H%x09%s%x09%b")
+COMMITS=$(git log "${LAST}..HEAD" \
+  --reverse \
+  --no-merges \
+  --invert-grep \
+  --grep="\[skip ci\]" \
+  --grep="internal:" \
+  --author="^(?!.*github-actions\[bot\]).*$" \
+  --pretty=format:"%H%x09%s%x09%b"
+)
 
 # If no new commits, exit cleanly
 if [ -z "$COMMITS" ]; then
