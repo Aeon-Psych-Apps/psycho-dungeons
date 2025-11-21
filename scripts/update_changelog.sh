@@ -7,22 +7,16 @@ CHANGELOG="CHANGELOG.md"
 if grep -q "LAST_PROCESSED" "$CHANGELOG"; then
     LAST=$(grep -oP '(?<=LAST_PROCESSED: )[0-9a-f]+' "$CHANGELOG" | tail -1)
 else
-    echo "No LAST_PROCESSED marker found. Defaulting to origin/main"
-    LAST="origin/main"
+    echo "No LAST_PROCESSED marker found. Using merge-base with main"
+    git fetch origin main:refs/remotes/origin/main
+    LAST=$(git merge-base HEAD origin/main)
 fi
 
-# 2. Gather commits newer than LAST
-COMMITS=$(git log "${LAST}..HEAD" \
-  --reverse \
-  --no-merges \
-  --invert-grep \
-  --grep="\[skip ci\]" \
-  --grep="internal:" \
-  --author="^(?!.*github-actions\[bot\]).*$" \
-  --pretty=format:"%H%x09%s%x09%b"
-)
+echo "Using last commit: $LAST"
 
-# If no new commits, exit cleanly
+# 2. Gather commits newer than LAST
+COMMITS=$(git log "${LAST}..HEAD" --reverse --no-merges --pretty=format:"%H%x09%s%x09%b")
+
 if [ -z "$COMMITS" ]; then
     echo "No new commits to add to changelog"
     exit 0
@@ -38,22 +32,20 @@ misc=""
 
 # 3. Categorize commits
 while IFS=$'\t' read -r hash subject body; do
-    # Normalize everything lowercase for routing
+    # lowercase for routing
     ls=$(echo "$subject" | tr '[:upper:]' '[:lower:]')
-
-    # Strip prefixes like FEATURE:latest and FEATURE: latest
+    # strip prefixes like FEATURE:, FIX:, PATCH: etc
     clean_subject=$(echo "$subject" | sed -E 's/^[a-z ]+:[ ]*//I')
-
     entry="- $clean_subject"
 
     case "$ls" in
-        feature:* )     added="$added$entry"$'\n' ;;
+        feature:* )      added="$added$entry"$'\n' ;;
         patch:*|changed:* ) changed="$changed$entry"$'\n' ;;
-        deprecated:* )  deprecated="$deprecated$entry"$'\n' ;;
+        deprecated:* )   deprecated="$deprecated$entry"$'\n' ;;
         removed:*|remove:*|delete:* ) removed="$removed$entry"$'\n' ;;
-        fix:*|fixed:* ) fixed="$fixed$entry"$'\n' ;;
-        security:* )    security="$security$entry"$'\n' ;;
-        * )             misc="$misc$entry"$'\n' ;;
+        fix:*|fixed:* )  fixed="$fixed$entry"$'\n' ;;
+        security:* )     security="$security$entry"$'\n' ;;
+        * )              misc="$misc$entry"$'\n' ;;
     esac
 
     NEW_LAST=$hash
