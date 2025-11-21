@@ -8,7 +8,7 @@ if [ "$(git rev-parse --abbrev-ref HEAD)" != "test" ]; then
 fi
 
 # Find base commit
-BASE=$(git merge-base test main)
+BASE=$(git merge-base HEAD origin/main)
 
 # Generate categorized changelog
 LOG=$(git log ${BASE}..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
