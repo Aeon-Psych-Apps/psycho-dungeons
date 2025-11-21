@@ -34,52 +34,52 @@ jobs:
           START=${{ steps.lastmerge.outputs.last_merge }}
 
           LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%s%x09%b" |
-          awk '
-            BEGIN {
-              RS="\n"; FS="\t"; ORS="";
-              added=""; changed=""; deprecated=""; removed=""; fixed=""; security=""; misc="";
-            }
-            {
-              subject=$1; body="";
-              if(NF>1){
-                for(i=2;i<=NF;i++){
-                  if($i!="") body=body"    - "$i"\n";
-                }
-              }
+awk '
+BEGIN {
+  RS="\n"; FS="\t"; ORS="";
+  added=""; changed=""; deprecated=""; removed=""; fixed=""; security=""; misc="";
+}
+{
+  subject=$1; body="";
+  if(NF>1){
+    for(i=2;i<=NF;i++){
+      if($i!="") body=body"    - "$i"\n";
+    }
+  }
 
-              lc=tolower(subject)
+  lc=tolower(subject)
 
-              if(lc ~ /^internal:/) next
-              if(lc ~ /\[skip ci\]/) next
+  if(lc ~ /^internal:/) next
+  if(lc ~ /\[skip ci\]/) next
 
-              entry="- " subject "\n" body
+  entry="- " subject "\n" body
 
-              if(lc ~ /^feature:/){
-                sub(/^feature:[ ]*/i,"",entry); added=added entry "\n"
-              } else if(lc ~ /^fix:/){
-                sub(/^fix:[ ]*/i,"",entry); fixed=fixed entry "\n"
-              } else if(lc ~ /^patch:/){
-                sub(/^patch:[ ]*/i,"",entry); changed=changed entry "\n"
-              } else if(lc ~ /^deprecated:/){
-                sub(/^deprecated:[ ]*/i,"",entry); deprecated=deprecated entry "\n"
-              } else if(lc ~ /^(remove|removed|delete):/){
-                sub(/^(remove|removed|delete):[ ]*/i,"",entry); removed=removed entry "\n"
-              } else if(lc ~ /^security:/){
-                sub(/^security:[ ]*/i,"",entry); security=security entry "\n"
-              } else {
-                misc=misc entry "\n"
-              }
-            }
-            END {
-              print "### Added\n" added "\n";
-              print "### Changed\n" changed "\n";
-              print "### Deprecated\n" deprecated "\n";
-              print "### Removed\n" removed "\n";
-              print "### Fixed\n" fixed "\n";
-              print "### Security\n" security "\n";
-              print "### Misc\n" misc "\n";
-            }
-          ')
+  if(lc ~ /^feature:/){
+    sub(/^feature:[ ]*/i,"",entry); added=added entry "\n"
+  } else if(lc ~ /^fix:/){
+    sub(/^fix:[ ]*/i,"",entry); fixed=fixed entry "\n"
+  } else if(lc ~ /^patch:/){
+    sub(/^patch:[ ]*/i,"",entry); changed=changed entry "\n"
+  } else if(lc ~ /^deprecated:/){
+    sub(/^deprecated:[ ]*/i,"",entry); deprecated=deprecated entry "\n"
+  } else if(lc ~ /^(remove|removed|delete):/){
+    sub(/^(remove|removed|delete):[ ]*/i,"",entry); removed=removed entry "\n"
+  } else if(lc ~ /^security:/){
+    sub(/^security:[ ]*/i,"",entry); security=security entry "\n"
+  } else {
+    misc=misc entry "\n"
+  }
+}
+END {
+  print "### Added\n" added "\n";
+  print "### Changed\n" changed "\n";
+  print "### Deprecated\n" deprecated "\n";
+  print "### Removed\n" removed "\n";
+  print "### Fixed\n" fixed "\n";
+  print "### Security\n" security "\n";
+  print "### Misc\n" misc "\n";
+}
+')
 
           echo "log<<EOF" >> $GITHUB_OUTPUT
           echo "$LOG" >> $GITHUB_OUTPUT
@@ -95,9 +95,9 @@ PY
 
           DATE=$(TZ=America/Phoenix date +"%Y-%m-%d")
 
-          # Ensure Unreleased sections exist
-          if ! grep -q "## \\[Unreleased\\]" CHANGELOG.md; then
-            cat <<EOF > CHANGELOG.tmp
+          # Ensure Unreleased section exists
+          if ! grep -q "## \[Unreleased\]" CHANGELOG.md; then
+cat <<EOF > CHANGELOG.tmp
 # Changelog
 All notable changes will be documented here.
 
@@ -119,64 +119,64 @@ EOF
 
           # Inject new content inside the Unreleased block
           awk -v new="${{ steps.commits.outputs.log }}" '
-            BEGIN {in_unrel=0}
-            /## \[Unreleased\]/ {
-              print
-              in_unrel=1
-              next
-            }
-            in_unrel && /^### / {
-              print new
-              in_unrel=0
-            }
-            {print}
-          ' CHANGELOG.md > CHANGELOG.new
+BEGIN {in_unrel=0}
+/## \[Unreleased\]/ {
+  print
+  in_unrel=1
+  next
+}
+in_unrel && /^### / {
+  print new
+  in_unrel=0
+}
+{print}
+' CHANGELOG.md > CHANGELOG.new
 
           mv CHANGELOG.new CHANGELOG.md
 
       - name: Build latest.json
         run: |
           python3 <<'EOF'
-          import os, json, base64, mimetypes
+import os, json, base64, mimetypes
 
-          def read_text(path):
-              with open(path, "r", encoding="utf-8") as f:
-                  return f.read()
+def read_text(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
 
-          def read_files(dir_path, exts=None):
-              files_data = []
-              for file in os.listdir(dir_path):
-                  if exts and not any(file.endswith(e) for e in exts):
-                      continue
-                  path = os.path.join(dir_path, file)
-                  if os.path.isdir(path):
-                      continue
-                  with open(path, "rb") as f:
-                      b64 = base64.b64encode(f.read()).decode()
-                  mime_type, _ = mimetypes.guess_type(path)
-                  if not mime_type:
-                      mime_type = "application/octet-stream"
-                  files_data.append({"name": file, "type": mime_type, "contents": b64, "display_logo": True})
-              return files_data
+def read_files(dir_path, exts=None):
+    files_data = []
+    for file in os.listdir(dir_path):
+        if exts and not any(file.endswith(e) for e in exts):
+            continue
+        path = os.path.join(dir_path, file)
+        if os.path.isdir(path):
+            continue
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        mime_type, _ = mimetypes.guess_type(path)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+        files_data.append({"name": file, "type": mime_type, "contents": b64, "display_logo": True})
+    return files_data
 
-          config = json.load(open("config/config.json"))
-          scripts = [{"name": f.split(".")[0], "contents": read_text(os.path.join("scripts", f))}
-                     for f in os.listdir("scripts") if f.endswith(".py")]
-          manual = [{"name": f.split(".")[0], "contents": read_text(os.path.join("manual", f))}
-                    for f in os.listdir("manual") if f.endswith(".md")]
-          images = read_files("images")
-          change_log = {"contents": read_text("CHANGELOG.md")}
+config = json.load(open("config/config.json"))
+scripts = [{"name": f.split(".")[0], "contents": read_text(os.path.join("scripts", f))}
+           for f in os.listdir("scripts") if f.endswith(".py")]
+manual = [{"name": f.split(".")[0], "contents": read_text(os.path.join("manual", f))}
+          for f in os.listdir("manual") if f.endswith(".md")]
+images = read_files("images")
+change_log = {"contents": read_text("CHANGELOG.md")}
 
-          latest = {
-              "config": config,
-              "scripts": scripts,
-              "images": images,
-              "manual": manual,
-              "change_log": change_log
-          }
+latest = {
+    "config": config,
+    "scripts": scripts,
+    "images": images,
+    "manual": manual,
+    "change_log": change_log
+}
 
-          json.dump(latest, open("latest.json","w"), indent=2)
-          EOF
+json.dump(latest, open("latest.json","w"), indent=2)
+EOF
 
       - name: Commit and push
         run: |
@@ -190,4 +190,3 @@ EOF
             git push
           else
             echo "No changes to commit"
-          fi
