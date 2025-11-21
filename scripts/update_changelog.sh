@@ -1,73 +1,59 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Make sure main exists locally
-git fetch origin main --depth=1 || true
+CHANGELOG="CHANGELOG.md"
 
-# If main does not exist (first run), use the first commit as base
-if git rev-parse origin/main >/dev/null 2>&1; then
-    BASE=$(git merge-base HEAD origin/main)
+# 1. Find last processed commit hash from the marker at the bottom of the changelog
+if grep -q "LAST_PROCESSED" "$CHANGELOG"; then
+    LAST=$(grep "LAST_PROCESSED" "$CHANGELOG" | tail -1 | sed -E 's/.*: ([0-9a-f]+).*/\1/')
 else
-    BASE=$(git rev-list --max-parents=0 HEAD)
+    # If no marker yet, only process the latest commit
+    LAST=$(git rev-list HEAD~1..HEAD | tail -1)
 fi
 
-echo "Using base commit: $BASE"
+# 2. Gather commits newer than LAST
+COMMITS=$(git log "${LAST}..HEAD" --no-merges --pretty=format:"%H%x09%s%x09%b")
 
-# Extract commit history since base and categorize
-git log ${BASE}..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
-BEGIN { 
-  FS="\t"
-  added=""; changed=""; deprecated=""; removed=""; fixed=""; security=""; misc=""
-}
-{
-  subject=$1
-  body=""
-  if (NF>1){
-    for(i=2;i<=NF;i++){
-      if($i!="") body=body"    - "$i"\n"
-    }
-  }
-  lc=tolower(subject)
+# If no new commits, exit cleanly
+if [ -z "$COMMITS" ]; then
+    echo "No new commits to add to changelog"
+    exit 0
+fi
 
-  # Ignore internal entries
-  if(lc ~ /^internal:/ || lc ~ /\[skip ci\]/) next
+added=""
+changed=""
+deprecated=""
+removed=""
+fixed=""
+security=""
+misc=""
 
-  # Strip prefixes if present (handles FEATURE:test and FEATURE: test)
-  sub(/^[a-z ]+:[ ]*/i, "", subject)
+# 3. Categorize commits
+while IFS=$'\t' read -r hash subject body; do
+    # Normalize everything lowercase for routing
+    ls=$(echo "$subject" | tr '[:upper:]' '[:lower:]')
 
-  # Categorize
-  category=""
-  if(lc ~ /^feature:/){category="added"}
-  else if(lc ~ /^patch:/ || lc ~ /^changed:/){category="changed"}
-  else if(lc ~ /^deprecated:/){category="deprecated"}
-  else if(lc ~ /^(remove|removed|delete):/){category="removed"}
-  else if(lc ~ /^fix:/ || lc ~ /^fixed:/){category="fixed"}
-  else if(lc ~ /^security:/){category="security"}
-  else {category="misc"}
+    # Strip prefixes like FEATURE:latest and FEATURE: latest
+    clean_subject=$(echo "$subject" | sed -E 's/^[a-z ]+:[ ]*//I')
 
-  entry="- " subject "\n" body
+    entry="- $clean_subject"
 
-  if(category=="added"){added=added entry "\n"}
-  else if(category=="changed"){changed=changed entry "\n"}
-  else if(category=="deprecated"){deprecated=deprecated entry "\n"}
-  else if(category=="removed"){removed=removed entry "\n"}
-  else if(category=="fixed"){fixed=fixed entry "\n"}
-  else if(category=="security"){security=security entry "\n"}
-  else {misc=misc entry "\n"}
-}
-END {
-  print added > "/tmp/added.txt"
-  print changed > "/tmp/changed.txt"
-  print deprecated > "/tmp/deprecated.txt"
-  print removed > "/tmp/removed.txt"
-  print fixed > "/tmp/fixed.txt"
-  print security > "/tmp/security.txt"
-  print misc > "/tmp/misc.txt"
-}'
- 
-# Ensure Unreleased header exists
-if ! grep -q "## \\[Unreleased\\]" CHANGELOG.md; then
-cat <<EOF > CHANGELOG.tmp
+    case "$ls" in
+        feature:* )     added="$added$entry"$'\n' ;;
+        patch:*|changed:* ) changed="$changed$entry"$'\n' ;;
+        deprecated:* )  deprecated="$deprecated$entry"$'\n' ;;
+        removed:*|remove:*|delete:* ) removed="$removed$entry"$'\n' ;;
+        fix:*|fixed:* ) fixed="$fixed$entry"$'\n' ;;
+        security:* )    security="$security$entry"$'\n' ;;
+        * )             misc="$misc$entry"$'\n' ;;
+    esac
+
+    NEW_LAST=$hash
+done <<< "$COMMITS"
+
+# 4. Ensure changelog header block exists
+if ! grep -q "## \[Unreleased\]" "$CHANGELOG"; then
+cat <<EOF > "$CHANGELOG.tmp"
 # Changelog
 All notable changes will be documented here.
 
@@ -83,24 +69,31 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Misc
 
 EOF
-  cat CHANGELOG.md >> CHANGELOG.tmp
-  mv CHANGELOG.tmp CHANGELOG.md
+    cat "$CHANGELOG" >> "$CHANGELOG.tmp"
+    mv "$CHANGELOG.tmp" "$CHANGELOG"
 fi
 
-# Insert new entries into headings
-awk '
-/## \[Unreleased\]/ {print; next}
-/### Added/ {print; system("cat /tmp/added.txt"); next}
-/### Changed/ {print; system("cat /tmp/changed.txt"); next}
-/### Deprecated/ {print; system("cat /tmp/deprecated.txt"); next}
-/### Removed/ {print; system("cat /tmp/removed.txt"); next}
-/### Fixed/ {print; system("cat /tmp/fixed.txt"); next}
-/### Security/ {print; system("cat /tmp/security.txt"); next}
-/### Misc/ {print; system("cat /tmp/misc.txt"); next}
+# 5. Insert items under correct headers
+awk -v ADD="$added" \
+    -v CHG="$changed" \
+    -v DEP="$deprecated" \
+    -v REM="$removed" \
+    -v FIX="$fixed" \
+    -v SEC="$security" \
+    -v MSC="$misc" '
+/### Added/      { print; if(ADD!="") print ADD; next }
+/### Changed/    { print; if(CHG!="") print CHG; next }
+/### Deprecated/ { print; if(DEP!="") print DEP; next }
+/### Removed/    { print; if(REM!="") print REM; next }
+/### Fixed/      { print; if(FIX!="") print FIX; next }
+/### Security/   { print; if(SEC!="") print SEC; next }
+/### Misc/       { print; if(MSC!="") print MSC; next }
 {print}
-' CHANGELOG.md > CHANGELOG.new
+' "$CHANGELOG" > "$CHANGELOG.new"
 
-mv CHANGELOG.new CHANGELOG.md
-rm -f /tmp/*.txt
+mv "$CHANGELOG.new" "$CHANGELOG"
 
-echo "Changelog updated"
+# 6. Remove previous marker and append the new one
+sed -i '/LAST_PROCESSED/d' "$CHANGELOG"
+echo "<!-- LAST_PROCESSED: $NEW_LAST -->" >> "$CHANGELOG"
+echo "Changelog updated through commit $NEW_LAST"
