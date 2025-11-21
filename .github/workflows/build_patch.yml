@@ -22,79 +22,117 @@ jobs:
             exit 0
           fi
 
-      - name: Find last merge of test into main
+      - name: Find common base commit
         id: lastmerge
         run: |
-          LAST=$(git log main..test --merges --pretty=format:"%H" | head -n 1)
-          if [ -z "$LAST" ]; then
-            LAST=$(git rev-list --max-parents=0 test)
-          fi
-          echo "last_merge=$LAST" >> $GITHUB_OUTPUT
+          BASE=$(git merge-base test main)
+          echo "last_merge=$BASE" >> $GITHUB_OUTPUT
 
-      - name: Generate commit entries since last merge
+      - name: Generate categorized entries since last merge
         id: commits
         run: |
           START=${{ steps.lastmerge.outputs.last_merge }}
-          LOG=$(git log ${START}^..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
-            BEGIN { RS="\n"; FS="\t"; ORS=""; features=""; fixes=""; patches=""; misc=""; }
+
+          LOG=$(git log ${START}..HEAD --no-merges --pretty=format:"%s%x09%b" |
+          awk '
+            BEGIN {
+              RS="\n"; FS="\t"; ORS="";
+              added=""; changed=""; deprecated=""; removed=""; fixed=""; security=""; misc="";
+            }
             {
               subject=$1; body="";
-              if(NF>1){ for(i=2;i<=NF;i++){ if($i!="") body=body"    - "$i"\n"; } }
+              if(NF>1){
+                for(i=2;i<=NF;i++){
+                  if($i!="") body=body"    - "$i"\n";
+                }
+              }
 
-              lc_subject=tolower(subject)
-              if(lc_subject ~ /^internal:/) next
-              if(lc_subject ~ /^update changelog/ || lc_subject ~ /\[skip ci\]/) next
+              lc=tolower(subject)
 
-              key = subject body
-              if(seen[key]++) next
+              if(lc ~ /^internal:/) next
+              if(lc ~ /\[skip ci\]/) next
 
               entry="- " subject "\n" body
 
-              if(lc_subject ~ /^feature:/){
-                sub(/^feature:[ ]*/i,"",entry); features=features entry "\n"
-              } else if(lc_subject ~ /^fix:/){
-                sub(/^fix:[ ]*/i,"",entry); fixes=fixes entry "\n"
-              } else if(lc_subject ~ /^patch:/){
-                sub(/^patch:[ ]*/i,"",entry); patches=patches entry "\n"
+              if(lc ~ /^feature:/){
+                sub(/^feature:[ ]*/i,"",entry); added=added entry "\n"
+              } else if(lc ~ /^fix:/){
+                sub(/^fix:[ ]*/i,"",entry); fixed=fixed entry "\n"
+              } else if(lc ~ /^patch:/){
+                sub(/^patch:[ ]*/i,"",entry); changed=changed entry "\n"
+              } else if(lc ~ /^deprecated:/){
+                sub(/^deprecated:[ ]*/i,"",entry); deprecated=deprecated entry "\n"
+              } else if(lc ~ /^(remove|removed|delete):/){
+                sub(/^(remove|removed|delete):[ ]*/i,"",entry); removed=removed entry "\n"
+              } else if(lc ~ /^security:/){
+                sub(/^security:[ ]*/i,"",entry); security=security entry "\n"
               } else {
                 misc=misc entry "\n"
               }
             }
             END {
-              if(features!="") print "### Features\n" features "\n"
-              if(fixes!="") print "### Fixes\n" fixes "\n"
-              if(patches!="") print "### Patches\n" patches "\n"
-              if(misc!="") print "### Misc\n" misc "\n"
+              print "### Added\n" added "\n";
+              print "### Changed\n" changed "\n";
+              print "### Deprecated\n" deprecated "\n";
+              print "### Removed\n" removed "\n";
+              print "### Fixed\n" fixed "\n";
+              print "### Security\n" security "\n";
+              print "### Misc\n" misc "\n";
             }
           ')
+
           echo "log<<EOF" >> $GITHUB_OUTPUT
           echo "$LOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Prepend entries to CHANGELOG.md
+      - name: Insert entries under Unreleased
         run: |
-          # Read version from config.json
-          VERSION=$(python3 -c "import json; print(json.load(open('config/config.json'))['github_version'])")
-          
-          DATE="$(TZ=America/Phoenix date +"%m/%d/%Y %H:%M %Z")"
-          mkdir -p manual
-          if [ ! -f manual/patch_notes.md ]; then
-            echo "# Patch Notes" > manual/patch_notes.md
+          VERSION=$(python3 - <<PY
+import json
+print(json.load(open("config/config.json"))["github_version"])
+PY
+)
+
+          DATE=$(TZ=America/Phoenix date +"%Y-%m-%d")
+
+          # Ensure Unreleased sections exist
+          if ! grep -q "## \\[Unreleased\\]" CHANGELOG.md; then
+            cat <<EOF > CHANGELOG.tmp
+# Changelog
+All notable changes will be documented here.
+
+The format is based on Keep a Changelog and this project follows Semantic Versioning.
+
+## [Unreleased]
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
+### Security
+### Misc
+
+EOF
+            cat CHANGELOG.md >> CHANGELOG.tmp
+            mv CHANGELOG.tmp CHANGELOG.md
           fi
 
-          # Prepend categorized commits to CHANGELOG.md
-          {
-            echo "$VERSION - [$DATE]"
-            echo ""
-            echo "${{ steps.commits.outputs.log }}"
-          } > CHANGELOG.tmp
+          # Inject new content inside the Unreleased block
+          awk -v new="${{ steps.commits.outputs.log }}" '
+            BEGIN {in_unrel=0}
+            /## \[Unreleased\]/ {
+              print
+              in_unrel=1
+              next
+            }
+            in_unrel && /^### / {
+              print new
+              in_unrel=0
+            }
+            {print}
+          ' CHANGELOG.md > CHANGELOG.new
 
-          # Append existing patch_notes
-          echo "" >> CHANGELOG.tmp
-          echo "---" >> CHANGELOG.tmp
-          cat manual/patch_notes.md >> CHANGELOG.tmp
-          echo "" >> CHANGELOG.tmp
-          mv CHANGELOG.tmp CHANGELOG.md
+          mv CHANGELOG.new CHANGELOG.md
 
       - name: Build latest.json
         run: |
@@ -114,24 +152,19 @@ jobs:
                   if os.path.isdir(path):
                       continue
                   with open(path, "rb") as f:
-                      b64 = base64.b64encode(f.read()).decode("utf-8")
+                      b64 = base64.b64encode(f.read()).decode()
                   mime_type, _ = mimetypes.guess_type(path)
                   if not mime_type:
                       mime_type = "application/octet-stream"
                   files_data.append({"name": file, "type": mime_type, "contents": b64, "display_logo": True})
               return files_data
 
-          with open("config/config.json", "r", encoding="utf-8") as f:
-              config = json.load(f)
-
-          scripts = [{"name": os.path.splitext(f)[0], "contents": read_text(os.path.join("scripts", f))}
+          config = json.load(open("config/config.json"))
+          scripts = [{"name": f.split(".")[0], "contents": read_text(os.path.join("scripts", f))}
                      for f in os.listdir("scripts") if f.endswith(".py")]
-
-          manual = [{"name": os.path.splitext(f)[0], "contents": read_text(os.path.join("manual", f))}
+          manual = [{"name": f.split(".")[0], "contents": read_text(os.path.join("manual", f))}
                     for f in os.listdir("manual") if f.endswith(".md")]
-
           images = read_files("images")
-
           change_log = {"contents": read_text("CHANGELOG.md")}
 
           latest = {
@@ -142,20 +175,18 @@ jobs:
               "change_log": change_log
           }
 
-          with open("latest.json", "w", encoding="utf-8") as f:
-              json.dump(latest, f, indent=2)
+          json.dump(latest, open("latest.json","w"), indent=2)
           EOF
 
       - name: Commit and push
         run: |
-          set -e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add CHANGELOG.md manual/patch_notes.md latest.json
+          git add CHANGELOG.md latest.json
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update CHANGELOG & patch_notes for $DATE [skip ci]"
+            git commit -m "internal: Update changelog [skip ci]"
             git push
           else
             echo "No changes to commit"
