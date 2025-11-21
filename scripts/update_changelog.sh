@@ -3,16 +3,16 @@ set -euo pipefail
 
 CHANGELOG="CHANGELOG.md"
 
-# 1. Find last processed commit hash from the marker at the bottom of the changelog
+# 1. Determine the last processed commit reference
 if grep -q "LAST_PROCESSED" "$CHANGELOG"; then
-    LAST=$(grep "LAST_PROCESSED" "$CHANGELOG" | tail -1 | sed -E 's/.*: ([0-9a-f]+).*/\1/')
+    LAST=$(grep -oP '(?<=LAST_PROCESSED: )[0-9a-f]+' "$CHANGELOG" | tail -1)
 else
-    # If no marker yet, only process the latest commit
-    LAST=$(git rev-list HEAD~1..HEAD | tail -1)
+    echo "No LAST_PROCESSED marker found. Defaulting to origin/main"
+    LAST="origin/main"
 fi
 
 # 2. Gather commits newer than LAST
-COMMITS=$(git log "${LAST}..HEAD" --no-merges --pretty=format:"%H%x09%s%x09%b")
+COMMITS=$(git log "${LAST}..HEAD" --reverse --no-merges --pretty=format:"%H%x09%s%x09%b")
 
 # If no new commits, exit cleanly
 if [ -z "$COMMITS" ]; then
