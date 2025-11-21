@@ -29,6 +29,17 @@ jobs:
         run: |
           BASE=$(git merge-base HEAD origin/main)
           echo "last_merge=$BASE" >> $GITHUB_OUTPUT
+      - name: Debug commit listing
+        run: |
+          echo "=== HEAD ==="
+          git log -1 --pretty=oneline
+          echo
+          echo "=== origin/main head ==="
+          git log refs/remotes/origin/main -1 --pretty=oneline
+          echo
+          echo "=== show difference ==="
+          git log refs/remotes/origin/main..HEAD --pretty=oneline | wc -l
+
 
       - name: Generate categorized entries since last merge
         run: bash scripts/update_changelog.sh
