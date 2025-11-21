@@ -73,7 +73,7 @@ def main(input):
     # Attach enemy to active map if present
     if 'current_map' in char:
         char['current_map']['enemy'] = enemy_obj
-        char['current_map']['map_type'] = "Dungeon-" & label
+        char['current_map']['map_type'] = "Dungeon-" + str(label)
 
     # Final message
     message = (
