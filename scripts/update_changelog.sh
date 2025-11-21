@@ -14,8 +14,9 @@ fi
 
 echo "Using last commit: $LAST"
 
-# 2. Gather commits newer than LAST
-COMMITS=$(git log "${LAST}..HEAD" --reverse --no-merges --pretty=format:"%H%x09%s%x09%b")
+# 2. Gather commits newer than LAST and exclude workflow/changelog automation
+COMMITS=$(git log "${LAST}..HEAD" --reverse --no-merges --pretty=format:"%H%x09%s%x09%b" \
+          | grep -v -E "(Update changelog|\[skip ci\]|update_build_patch\.yml|build_patch\.yml|update_changelog\.sh)")
 
 if [ -z "$COMMITS" ]; then
     echo "No new commits to add to changelog"
