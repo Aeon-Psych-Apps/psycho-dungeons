@@ -39,11 +39,11 @@ def main(input):
             return {'error': f"Item '{equip_id}' not found in inventory."}
 
         if item.get('type') != 'equipment':
-            return {'error': f'Item '{item.get('name')}' is not an equippable item.'}
+            return {'error': f"Item '{item.get('name')}' is not an equippable item."}
 
         slot = item.get('slot')
         if not slot:
-            return {'error': f'Item '{item.get('name')}' missing slot type.'}
+            return {'error': f"Item '{item.get('name')}' missing slot type."}
 
         # === Handle ring logic (2 slots) ===
         if slot == 'ring':
