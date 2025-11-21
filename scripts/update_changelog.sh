@@ -1,36 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure on test branch
+# Ensure we are on the test branch
 if [ "$(git rev-parse --abbrev-ref HEAD)" != "test" ]; then
   echo "Not on test branch. Exiting."
   exit 0
 fi
 
-# Find base commit
+# Get the common base with main (make sure origin/main exists)
+git fetch origin main --depth=1
 BASE=$(git merge-base HEAD origin/main)
 
-# Generate categorized changelog entries
-LOG=$(git log ${BASE}..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
-BEGIN { FS="\t"; OFS="\n"; added=""; changed=""; deprecated=""; removed=""; fixed=""; security=""; misc="" }
+# Generate categorized changelog entries without headings
+git log ${BASE}..HEAD --no-merges --pretty=format:"%s%x09%b" | awk '
+BEGIN { FS="\t"; added=""; changed=""; deprecated=""; removed=""; fixed=""; security=""; misc="" }
 {
-  subject=$1
-  body=""
+  subject=$1; body=""
   if(NF>1){for(i=2;i<=NF;i++){if($i!="") body=body"    - "$i"\n"}}
   lc=tolower(subject)
-  if(lc ~ /^internal:/) next
-  if(lc ~ /\[skip ci\]/) next
-  entry="- " subject "\n" body
-  if(lc ~ /^feature:/){added=added entry "\n"}
-  else if(lc ~ /^fix:/){fixed=fixed entry "\n"}
-  else if(lc ~ /^patch:/){changed=changed entry "\n"}
-  else if(lc ~ /^deprecated:/){deprecated=deprecated entry "\n"}
-  else if(lc ~ /^(remove|removed|delete):/){removed=removed entry "\n"}
-  else if(lc ~ /^security:/){security=security entry "\n"}
+  if(lc ~ /^internal:/ || lc ~ /\[skip ci\]/) next
+
+  # Determine category and strip prefix
+  entry_text = subject
+  category=""
+  if(lc ~ /^feature:/){category="added"; sub(/^feature:[ ]*/i,"",entry_text)}
+  else if(lc ~ /^fix:/ || lc ~ /^fixed:/){category="fixed"; sub(/^(fix|fixed):[ ]*/i,"",entry_text)}
+  else if(lc ~ /^patch:/ || lc ~ /^changed:/){category="changed"; sub(/^(patch|changed):[ ]*/i,"",entry_text)}
+  else if(lc ~ /^deprecated:/){category="deprecated"; sub(/^deprecated:[ ]*/i,"",entry_text)}
+  else if(lc ~ /^(remove|removed|delete):/){category="removed"; sub(/^(remove|removed|delete):[ ]*/i,"",entry_text)}
+  else if(lc ~ /^security:/){category="security"; sub(/^security:[ ]*/i,"",entry_text)}
+  else {category="misc"}
+
+  # Format entry
+  entry="- " entry_text "\n" body
+
+  if(category=="added"){added=added entry "\n"}
+  else if(category=="changed"){changed=changed entry "\n"}
+  else if(category=="deprecated"){deprecated=deprecated entry "\n"}
+  else if(category=="removed"){removed=removed entry "\n"}
+  else if(category=="fixed"){fixed=fixed entry "\n"}
+  else if(category=="security"){security=security entry "\n"}
   else {misc=misc entry "\n"}
 }
 END {
-  # Print each section’s entries separately
   print added > "/tmp/added.txt"
   print changed > "/tmp/changed.txt"
   print deprecated > "/tmp/deprecated.txt"
@@ -38,7 +50,7 @@ END {
   print fixed > "/tmp/fixed.txt"
   print security > "/tmp/security.txt"
   print misc > "/tmp/misc.txt"
-}')
+}'
 
 # Create CHANGELOG template if missing
 if ! grep -q "## \\[Unreleased\\]" CHANGELOG.md; then
@@ -62,7 +74,7 @@ EOF
   mv CHANGELOG.tmp CHANGELOG.md
 fi
 
-# Insert entries under each section
+# Insert entries under the correct sections
 awk '
 /## \[Unreleased\]/ {unrel=1; print; next}
 /### Added/ {print; system("cat /tmp/added.txt"); next}
@@ -77,7 +89,7 @@ awk '
 
 mv CHANGELOG.new CHANGELOG.md
 
-# Cleanup
+# Cleanup temporary files
 rm -f /tmp/*.txt
 
 echo "Changelog updated successfully"
