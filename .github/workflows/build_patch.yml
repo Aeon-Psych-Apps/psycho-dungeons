@@ -14,7 +14,8 @@ jobs:
         with:
           fetch-depth: 0
           ref: test
-          fetch-all: true
+      - name: Fetch main branch
+        run: git fetch origin main:refs/remotes/origin/main
 
       - name: Ensure correct branch
         run: |
@@ -26,7 +27,7 @@ jobs:
       - name: Find common base commit
         id: lastmerge
         run: |
-          BASE=$(git merge-base test main)
+          BASE=$(git merge-base HEAD origin/main)
           echo "last_merge=$BASE" >> $GITHUB_OUTPUT
 
       - name: Generate categorized entries since last merge
