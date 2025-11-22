@@ -5,7 +5,7 @@ CHANGELOG="CHANGELOG.md"
 
 # 1. Determine the last processed commit reference
 if grep -q "LAST_PROCESSED" "$CHANGELOG"; then
-    LAST=$(grep -oP '(?<=LAST_PROCESSED: )[0-9a-f]+' "$CHANGELOG" | tail -1)
+    LAST=$(grep 'LAST_PROCESSED:' "$CHANGELOG" | sed 's/.*LAST_PROCESSED: //' | tail -1)
 else
     echo "No LAST_PROCESSED marker found. Using merge-base with main"
     git fetch origin main:refs/remotes/origin/main
