@@ -94,10 +94,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Update CHANGELOG.md
 - Update changelog [skip ci]
 - Update update_changelog.sh
-- Update CHANGELOG.md
-- Update changelog [skip ci]
-- Update build_patch.yml
-- Update update_changelog.sh
+- ok
+
 
 
 
