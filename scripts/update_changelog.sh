@@ -5,37 +5,39 @@ CHANGELOG="CHANGELOG.md"
 
 echo "[DEBUG] Starting changelog update"
 
-# 1. Find last processed commit
+# 1. Determine last processed commit
 if grep -q "LAST_PROCESSED" "$CHANGELOG"; then
-  LAST=$(grep 'LAST_PROCESSED:' "$CHANGELOG" \
-    | sed 's/.*LAST_PROCESSED: \([0-9a-f]*\).*/\1/' \
-    | tail -1)
+    LAST=$(grep -oP '(?<=LAST_PROCESSED: )[0-9a-f]+' "$CHANGELOG" | tail -1)
 else
-  echo "[DEBUG] No LAST_PROCESSED marker found. Using merge-base"
-  git fetch origin main:refs/remotes/origin/main
-  LAST=$(git merge-base HEAD origin/main)
+    echo "[DEBUG] No LAST_PROCESSED marker. Using merge-base"
+    git fetch origin main:refs/remotes/origin/main
+    LAST=$(git merge-base HEAD origin/main)
 fi
 
 echo "[DEBUG] Using last commit: $LAST"
 
-# Ensure LAST commit exists
-if ! git cat-file -e "$LAST"^{commit} 2>/dev/null; then
-  echo "[WARN] LAST commit missing locally. Fetching deeper history..."
-  git fetch --unshallow || git fetch --all
-fi
-
-# 2. Extract commits newer than LAST including subject and body
-# Use a unique delimiter so bodies are preserved safely
-RAW_COMMITS=$(git log "${LAST}..HEAD" --reverse --no-merges \
-    --pretty=format:"===COMMIT_START===%nHASH:%H%nSUBJECT:%s%nBODY:%b%n===COMMIT_END===" \
-    || true)
+# 2. Gather commits newer than LAST
+# Exclude automation commits:
+#  - commits modifying workflow files (.yml)
+#  - anything containing [skip ci]
+#  - commits tagged "internal"
+#  - commits mentioning changelog automation
+RAW_COMMITS=$(
+    git log "${LAST}..HEAD" \
+        --reverse \
+        --no-merges \
+        --pretty=format:"%H%x09%s%x09%b" |
+        grep -v -Ei "(update changelog|\[skip ci\]|\.yml|internal)"
+)
 
 if [ -z "$RAW_COMMITS" ]; then
-  echo "[INFO] No commits found"
-  exit 0
+    echo "[INFO] No new commits to add"
+    exit 0
 fi
 
-# 3. Categorize + format
+echo "[DEBUG] Found commits:"
+echo "$RAW_COMMITS" | sed 's/^/  - /'
+
 added=""
 changed=""
 deprecated=""
@@ -43,79 +45,54 @@ removed=""
 fixed=""
 security=""
 misc=""
-NEW_LAST="$LAST"
 
-# Convert into individual commit blocks
-echo "$RAW_COMMITS" | awk '
-/===COMMIT_START===/ { capture=1; block=""; next }
-capture==1          { block=block $0 ORS }
-/===COMMIT_END===/  {
-  print block;
-  capture=0;
-}
-' | while read -r block; do
+# 3. Categorize commits
+while IFS=$'\t' read -r hash subject body; do
+    ls=$(echo "$subject" | tr '[:upper:]' '[:lower:]')
 
-  hash=$(echo "$block" | grep "^HASH:" | sed 's/HASH://')
-  subject=$(echo "$block" | grep "^SUBJECT:" | sed 's/SUBJECT://')
-  body=$(echo "$block" | sed -n '/^BODY:/,$p' | sed 's/^BODY://')
+    # remove semantic prefix e.g. "fix:" or "feature:"
+    clean_subject=$(echo "$subject" | sed -E 's/^[a-z ]+:[ ]*//I')
 
-  # skip automation and internal commits
-  lsubject=$(echo "$subject" | tr '[:upper:]' '[:lower:]')
-  if echo "$lsubject" | grep -Eq '(update changelog|\[skip ci\]|internal:)'; then
-    continue
-  fi
+    # include body if present
+    formatted="- $clean_subject"
+    if [ -n "$body" ]; then
+        formatted="$formatted"$'\n'"  $(echo "$body" | sed 's/^/  /')"
+    fi
 
-  # strip known prefixes for printed output
-  clean_subject=$(echo "$subject" \
-      | sed -E 's/^[a-z ]+:[ ]*//I')
+    case "$ls" in
+        feature:* )
+            added="$added$formatted"$'\n'
+            ;;
+        patch:*|change:*|changed:* )
+            changed="$changed$formatted"$'\n'
+            ;;
+        deprecated:* )
+            deprecated="$deprecated$formatted"$'\n'
+            ;;
+        remove:*|removed:*|delete:*|deleted:* )
+            removed="$removed$formatted"$'\n'
+            ;;
+        fix:*|fixed:* )
+            fixed="$fixed$formatted"$'\n'
+            ;;
+        security:* )
+            security="$security$formatted"$'\n'
+            ;;
+        * )
+            misc="$misc$formatted"$'\n'
+            ;;
+    esac
 
-  # multi-line bullet formatting
-  entry="- $clean_subject"
-  if [ -n "$body" ]; then
-    entry="$entry"$'\n'"$(echo "$body" | sed 's/^/  /')"
-  fi
-  entry="$entry"$'\n'
+    NEW_LAST=$hash
+done <<< "$RAW_COMMITS"
 
-  # categorize
-  case "$lsubject" in
-    feature:* )
-      added="$added$entry"
-      ;;
-    changed:*|patch:* )
-      changed="$changed$entry"
-      ;;
-    deprecated:* )
-      deprecated="$deprecated$entry"
-      ;;
-    removed:*|delete:*|remove:* )
-      removed="$removed$entry"
-      ;;
-    fix:*|fixed:* )
-      fixed="$fixed$entry"
-      ;;
-    security:* )
-      security="$security$entry"
-      ;;
-    * )
-      misc="$misc$entry"
-      ;;
-  esac
-
-  NEW_LAST="$hash"
-done
-
-# If nothing added anywhere
-if [ -z "$added$changed$deprecated$removed$fixed$security$misc" ]; then
-  echo "[INFO] No new changes for changelog"
-  exit 0
-fi
-
-# 4. Ensure changelog has expected sections
+# 4. Ensure header exists
 if ! grep -q "## \[Unreleased\]" "$CHANGELOG"; then
 cat <<EOF > "$CHANGELOG.tmp"
 # Changelog
+All notable changes will be documented here.
 
-This project follows Keep a Changelog formatting.
+The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
 ## [Unreleased]
 ### Added
@@ -127,32 +104,31 @@ This project follows Keep a Changelog formatting.
 ### Misc
 
 EOF
-  cat "$CHANGELOG" >> "$CHANGELOG.tmp"
-  mv "$CHANGELOG.tmp" "$CHANGELOG"
+    cat "$CHANGELOG" >> "$CHANGELOG.tmp"
+    mv "$CHANGELOG.tmp" "$CHANGELOG"
 fi
 
-# 5. Insert each category
-awk \
-  -v ADD="$added" \
-  -v CHG="$changed" \
-  -v DEP="$deprecated" \
-  -v REM="$removed" \
-  -v FIX="$fixed" \
-  -v SEC="$security" \
-  -v MSC="$misc" '
-/### Added/      { print; if (ADD!="") print ADD; next }
-/### Changed/    { print; if (CHG!="") print CHG; next }
-/### Deprecated/ { print; if (DEP!="") print DEP; next }
-/### Removed/    { print; if (REM!="") print REM; next }
-/### Fixed/      { print; if (FIX!="") print FIX; next }
-/### Security/   { print; if (SEC!="") print SEC; next }
-/### Misc/       { print; if (MSC!="") print MSC; next }
+# 5. Inject categorized items
+awk -v ADD="$added" \
+    -v CHG="$changed" \
+    -v DEP="$deprecated" \
+    -v REM="$removed" \
+    -v FIX="$fixed" \
+    -v SEC="$security" \
+    -v MSC="$misc" '
+/### Added/      { print; if(ADD!="") print ADD; next }
+/### Changed/    { print; if(CHG!="") print CHG; next }
+/### Deprecated/ { print; if(DEP!="") print DEP; next }
+/### Removed/    { print; if(REM!="") print REM; next }
+/### Fixed/      { print; if(FIX!="") print FIX; next }
+/### Security/   { print; if(SEC!="") print SEC; next }
+/### Misc/       { print; if(MSC!="") print MSC; next }
 {print}
 ' "$CHANGELOG" > "$CHANGELOG.new"
 
 mv "$CHANGELOG.new" "$CHANGELOG"
 
-# 6. Shift LAST_PROCESSED marker
+# 6. Replace LAST_PROCESSED marker
 sed -i '/LAST_PROCESSED/d' "$CHANGELOG"
 echo "<!-- LAST_PROCESSED: $NEW_LAST -->" >> "$CHANGELOG"
 
