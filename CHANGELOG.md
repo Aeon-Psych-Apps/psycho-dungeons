@@ -21,6 +21,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Security
 ### Misc
+- Update CHANGELOG.md
+
 - Update changelog [skip ci]
 - Update update_changelog.sh
 - Update update_changelog.sh
@@ -99,4 +101,4 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 
 
-<!-- LAST_PROCESSED: 2ea2505efe93ae62441c6b78f08351f3665b9e88 -->
+<!-- LAST_PROCESSED: 211f2c1665997e3f210a6fd7dff62eefe12e29e6 -->
