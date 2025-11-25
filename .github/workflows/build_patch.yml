@@ -52,7 +52,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add CHANGELOG.md latest.json
+          git add automated_changelog.md latest.json
 
           if ! git diff --cached --quiet; then
             git commit -m "internal: Update changelog [skip ci]"
