@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CHANGELOG="CHANGELOG.md"
-echo "[DEBUG] Starting changelog update"
+OUTPUT_FILE="automated_changelog.md"
+echo "[DEBUG] Starting automated changelog"
 
 # 1. Determine last processed commit
-if grep -q "LAST_PROCESSED" "$CHANGELOG"; then
-    LAST=$(grep -oP '(?<=LAST_PROCESSED: )[0-9a-f]+' "$CHANGELOG" | tail -1)
+if grep -q "LAST_PROCESSED" "$OUTPUT_FILE" 2>/dev/null; then
+    LAST=$(grep -oP '(?<=LAST_PROCESSED: )[0-9a-f]+' "$OUTPUT_FILE" | tail -1)
 else
     echo "[DEBUG] No LAST_PROCESSED found, using merge-base with main"
     git fetch origin main:refs/remotes/origin/main
@@ -26,23 +26,19 @@ added="" changed="" deprecated="" removed="" fixed="" security="" misc=""
 
 # 4. Categorize commits
 while IFS=$'\t' read -r hash subject body; do
-    # Skip internal or automation commits
     if [[ "$subject" =~ [Ii]nternal ]] || [[ "$subject" =~ \[skip\ ci\] ]]; then
         echo "[DEBUG] Skipping commit $hash: $subject"
         continue
     fi
 
-    # Lowercase subject for routing
     ls=$(echo "$subject" | tr '[:upper:]' '[:lower:]')
-    # Strip tags like FEATURE:, FIX:, PATCH:, INTERNAL:
     clean_subject=$(echo "$subject" | sed -E 's/^[a-z ]+:[ ]*//I')
-    # Combine subject + body for changelog entry
+
     entry="- $clean_subject"
     if [ -n "$body" ]; then
         entry="$entry"$'\n'"  $(echo "$body" | sed '/^\s*$/d; s/^/  /')"
     fi
 
-    # Categorize
     case "$ls" in
         feature:* )      added="$added$entry"$'\n' ;;
         patch:*|changed:* ) changed="$changed$entry"$'\n' ;;
@@ -61,13 +57,11 @@ if [ -z "$NEW_LAST" ]; then
     exit 0
 fi
 
-# 5. Ensure changelog header
-if ! grep -q "## \[Unreleased\]" "$CHANGELOG"; then
-cat <<EOF > "$CHANGELOG.tmp"
-# Changelog
-All notable changes will be documented here.
-
-The format is based on Keep a Changelog and this project follows Semantic Versioning.
+# 5. Ensure file exists with header
+if ! grep -q "## \[Unreleased\]" "$OUTPUT_FILE" 2>/dev/null; then
+cat <<EOF > "$OUTPUT_FILE.tmp"
+# Changelog (Automated Source)
+This file contains automatically generated commit history.
 
 ## [Unreleased]
 ### Added
@@ -79,8 +73,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 ### Misc
 
 EOF
-    cat "$CHANGELOG" >> "$CHANGELOG.tmp"
-    mv "$CHANGELOG.tmp" "$CHANGELOG"
+    cat "$OUTPUT_FILE" >> "$OUTPUT_FILE.tmp" 2>/dev/null || true
+    mv "$OUTPUT_FILE.tmp" "$OUTPUT_FILE"
 fi
 
 # 6. Insert categorized commits under headers
@@ -93,11 +87,12 @@ awk -v ADD="$added" -v CHG="$changed" -v DEP="$deprecated" -v REM="$removed" -v 
 /### Security/   { print; if(SEC!="") print SEC; next }
 /### Misc/       { print; if(MSC!="") print MSC; next }
 {print}
-' "$CHANGELOG" > "$CHANGELOG.new"
+' "$OUTPUT_FILE" > "$OUTPUT_FILE.new"
 
-mv "$CHANGELOG.new" "$CHANGELOG"
+mv "$OUTPUT_FILE.new" "$OUTPUT_FILE"
 
 # 7. Update LAST_PROCESSED marker
-sed -i '/LAST_PROCESSED/d' "$CHANGELOG"
-echo "<!-- LAST_PROCESSED: $NEW_LAST -->" >> "$CHANGELOG"
-echo "[INFO] Changelog updated through commit $NEW_LAST"
+sed -i '/LAST_PROCESSED/d' "$OUTPUT_FILE"
+echo "<!-- LAST_PROCESSED: $NEW_LAST -->" >> "$OUTPUT_FILE"
+
+echo "[INFO] automated_changelog.md updated through commit $NEW_LAST"
