@@ -1,4 +1,4 @@
-# Changelog (Automated Source)
+# Changelog (Automated per working version based off filtered commit messages)
 This file contains automatically generated commit history.
 
 ## [Unreleased]
@@ -31,4 +31,3 @@ This file contains automatically generated commit history.
 - Update CHANGELOG.md
 
 
-<!-- LAST_PROCESSED: 211f2c1665997e3f210a6fd7dff62eefe12e29e6 -->
