@@ -24,6 +24,7 @@ fi
 # 3. Initialize categories
 added="" changed="" deprecated="" removed="" fixed="" security="" misc=""
 
+NEW_LAST=""
 # 4. Categorize commits
 while IFS=$'\t' read -r hash subject body; do
     if [[ "$subject" =~ [Ii]nternal ]] || [[ "$subject" =~ \[skip\ ci\] ]]; then
