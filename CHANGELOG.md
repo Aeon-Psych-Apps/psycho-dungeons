@@ -10,6 +10,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
     - Changed the naming references for images to reflect the updated naming schema
 - mage class in draw_animation_image.py
     - updated the mage class assign to player to correctly reflect the change to skeleton
+    - Previous players using the skeleton mage need to either have their account config for the old "mage" character manually updated to have the new image references work for the skeleton character. Deleting and remaking the specific character should also fix.
 - Added enemy label to current dungeon map type
     Added enemy/boss label to current map type. This will now make it such that players leaving in the middle of a enemy/boss encounter will now resume once re-loading the game
 
@@ -133,3 +134,4 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### v1.0.0 - [2025/10/28]
 - Initial commit
+
