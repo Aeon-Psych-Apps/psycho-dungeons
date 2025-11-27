@@ -13,6 +13,13 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
     - Previous players using the skeleton mage need to have their account config for the old "mage" character class under their account manually updated to have the new image references work for the skeleton character the new class is `Skeleton`. Deleting and remaking the specific character should also fix.
 - Added enemy label to current dungeon map type
     Added enemy/boss label to current map type. This will now make it such that players leaving in the middle of a enemy/boss encounter will now resume once re-loading the game
+- Updated Tines Story "client" UI v1.0.2
+    - Updated image name reference logic (heal, battle, revive, combat, dungeon, town, shop) to account for Mage class change to Skeleton. Also improved the ability to potentially introduce new character/class types and/or re-use character graphics between player/enemy.
+    - Integrated the helper web apps (script/image resource manager) to the game client instead of separate web apps. These should only be accessible by users signed into the Tines tenant hosting the game client. This integration also has the benefit of reducing the required licensed flows to 1.
+    - Updated the Patch service UI to allow switching between historical patch versions. Although not very useful as some patch versions are dependent on specific client UI versions to run.
+    - Switched patch server URL to GitHub repository.
+    - Fixed a minor issue where each action in the login page would attempt to login to the game regardless of the action taken, resulting in an extra event output as well as error.
+    - Updated the Email invite UI to automatically submit. Reducing account invite process by a minimum of 5 seconds.
 
 ### Deprecated
 - Tines Story version 1.0.1 and lower are now deprecated.
@@ -134,5 +141,6 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### v1.0.0 - [2025/10/28]
 - Initial commit
+
 
 
