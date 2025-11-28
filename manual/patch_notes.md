@@ -1,6 +1,7 @@
 1.0.2 - [2025/11/27]
 
 ### Added
+- Disclaimer to in game patch UI that downgrading to a game patch lower than the current story client UI version may cause the game to break.
 ### Changed
 - Update Image References in draw_animation_image.py
     - Changed the naming references for images to reflect the updated naming schema
@@ -39,7 +40,7 @@
 - HP increasing gear may not correctly apply to the player when equipped, but still be calculated internally for damage calculation. This results in an outcome where enemies may be stronger than they should be (enemies scale against player stats). Advise is to not equip HP increasing gear until a fix is confirmed. 
 ### Misc
 - Update CHANGELOG.md
-- Update CHANGELOG.md
+
 
 
 
