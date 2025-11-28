@@ -5,6 +5,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 ### Added
+- Disclaimer to in game patch UI that downgrading to a game patch lower than the current story client UI version may cause the game to break.
 ### Changed
 - Update Image References in draw_animation_image.py
     - Changed the naming references for images to reflect the updated naming schema
@@ -144,6 +145,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### v1.0.0 - [2025/10/28]
 - Initial commit
+
 
 
 
