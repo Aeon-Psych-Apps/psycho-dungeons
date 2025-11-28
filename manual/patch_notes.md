@@ -1,4 +1,5 @@
-1.0.2 - [2025/11/27]
+1.0.2 - [2025/11/27]  
+View the full changelog history on GitHub at [https://github.com/Aeon-Psych-Apps/psycho-dungeons](https://github.com/Aeon-Psych-Apps/psycho-dungeons)
 
 ### Added
 - Disclaimer to in game patch UI that downgrading to a game patch lower than the current story client UI version may cause the game to break.
@@ -40,6 +41,7 @@
 - HP increasing gear may not correctly apply to the player when equipped, but still be calculated internally for damage calculation. This results in an outcome where enemies may be stronger than they should be (enemies scale against player stats). Advise is to not equip HP increasing gear until a fix is confirmed. 
 ### Misc
 - Update CHANGELOG.md
+
 
 
 
