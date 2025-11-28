@@ -26,13 +26,13 @@
 - syntax error in update_char_enemy_gen.py script
     - Fixed a syntax error causing the script to fail
 - syntax errors in update_combat_heal.py script
-    - fixed syntax errors in the combat heal script that would cause failures
+    - Fixed syntax errors in the combat heal script that would cause failures
 - Syntax in update_char_payload_move_quick.py
-    Fixed syntax error causing fail in script
+    - Fixed syntax error causing fail in script
 - Syntax error
-    Fixed the syntax error from the previous change to enemy/bass labeling change
+    - Fixed the syntax error from the previous change to enemy/bass labeling change
 - Syntax in update_char_shop_equip.py script
-    Fixed bad syntax in script for processing shop equipping feature that resulted in failed execution.
+    - Fixed bad syntax in script for processing shop equipping feature that resulted in failed execution.
 
 ### Security
 ### Known Issues / Bugs
@@ -40,6 +40,7 @@
 - HP increasing gear may not correctly apply to the player when equipped, but still be calculated internally for damage calculation. This results in an outcome where enemies may be stronger than they should be (enemies scale against player stats). Advise is to not equip HP increasing gear until a fix is confirmed. 
 ### Misc
 - Update CHANGELOG.md
+
 
 
 
