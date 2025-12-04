@@ -3,7 +3,11 @@ All notable changes will be documented here.
 
 The format is based on Keep a Changelog and this project follows Semantic Versioning.
 
-## [Unreleased]
+
+## [Test build]
+### Future additions
+- Integrate native story patching.
+    - There currently seems to be a bug preventing native story patching logic. Once this gets resolved, the patch server should be able to cleanly update/patch both the game files and story/UI.
 ### Added
 - Disclaimer to in game patch UI that downgrading to a game patch lower than the current story client UI version may cause the game to break.
 ### Changed
@@ -144,6 +148,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### v1.0.0 - [2025/10/28]
 - Initial commit
+
 
 
 
