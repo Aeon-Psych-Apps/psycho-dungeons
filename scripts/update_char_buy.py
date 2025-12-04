@@ -24,21 +24,21 @@ def main(input):
             break
 
     if not character:
-        return {'error': f'Character '{character_name}' not found.'}
+        return {'error': f"Character '{character_name}' not found."}
 
     # === Locate the item in shop ===
     shop_items = character.get('shop_items', [])
     item = next((i for i in shop_items if i.get('item_id') == purchase_id), None)
 
     if not item:
-        return {'error': f'Item '{purchase_id}' not found in shop.'}
+        return {'error': f"Item '{purchase_id}' not found in shop."}
 
     item_value = item.get('value', 0)
     gold = character.get('gold', 0)
 
     # === Check affordability ===
     if gold < item_value:
-        return {'error': f'Not enough gold. Need {item_value}, have {gold}.'}
+        return {'error': f"Not enough gold. Need {item_value}, have {gold}."}
 
     # === Deduct gold ===
     character['gold'] = gold - item_value

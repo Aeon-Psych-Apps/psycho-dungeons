@@ -1,4 +1,57 @@
-[11/19/2025 03:35 MST]
+# Changelog
+All notable changes will be documented here.
+
+The format is based on Keep a Changelog and this project follows Semantic Versioning.
+
+
+## [Test build]
+### Future additions
+- Integrate native story patching.
+    - There currently seems to be a bug preventing native story patching logic. Once this gets resolved, the patch server should be able to cleanly update/patch both the game files and story/UI.
+### Added
+- Disclaimer to in game patch UI that downgrading to a game patch lower than the current story client UI version may cause the game to break.
+### Changed
+- Update Image References in draw_animation_image.py
+    - Changed the naming references for images to reflect the updated naming schema
+- mage class in draw_animation_image.py
+    - updated the mage class assign to player to correctly reflect the change to skeleton
+    - Previous players using the skeleton mage need to have their account config for the old "mage" character class under their account manually updated to have the new image references work for the skeleton character the new class is `Skeleton`. Deleting and remaking the specific character should also fix.
+- Added enemy label to current dungeon map type
+    Added enemy/boss label to current map type. This will now make it such that players leaving in the middle of a enemy/boss encounter will now resume once re-loading the game
+- Updated Tines Story "client" UI v1.0.2
+    - Updated image name reference logic (heal, battle, revive, combat, dungeon, town, shop) to account for Mage class change to Skeleton. Also improved the ability to potentially introduce new character/class types and/or re-use character graphics between player/enemy.
+    - Integrated the helper web apps (script/image resource manager) to the game client instead of separate web apps. These should only be accessible by users signed into the Tines tenant hosting the game client. This integration also has the benefit of reducing the required licensed flows to 1.
+    - Updated the Patch service UI to allow switching between historical patch versions. Although not very useful as some patch versions are dependent on specific client UI versions to run.
+    - Switched patch server URL to GitHub repository.
+    - Fixed a minor issue where each action in the login page would attempt to login to the game regardless of the action taken, resulting in an extra event output as well as error.
+    - Updated the Email invite UI to automatically submit. Reducing account invite process by a minimum of 5 seconds.
+
+### Deprecated
+- Tines Story version 1.0.1 and lower are now deprecated.
+    - A new story UI needs to be imported/patched in order to completely use this and future patches with minimal issues.
+### Removed
+### Fixed
+- syntax error in update_char_enemy_gen.py script
+    - Fixed a syntax error causing the script to fail
+- syntax errors in update_combat_heal.py script
+    - fixed syntax errors in the combat heal script that would cause failures
+- Syntax in update_char_payload_move_quick.py
+    - Fixed syntax error causing fail in script
+- Syntax error
+    - Fixed the syntax error from the previous change to enemy/bass labeling change
+- Syntax in update_char_shop_equip.py script
+    - Fixed bad syntax in script for processing shop equipping feature that resulted in failed execution.
+
+### Security
+### Known Issues / Bugs
+- Status effects/bonuses do not apply for either enemies nor players regardless of status indication in the UI. This mechanic will be modified and introduced at a later date.
+- HP increasing gear may not correctly apply to the player when equipped, but still be calculated internally for damage calculation. This results in an outcome where enemies may be stronger than they should be (enemies scale against player stats). Advise is to not equip HP increasing gear until a fix is confirmed. 
+### Misc
+- Update CHANGELOG.md
+
+---
+
+### v1.0.1 - [2025/11/19 01:49 MST]
 
 ### Features
 - FEATURE: latest
@@ -85,181 +138,20 @@
 - Rename warrior_idle.gif to warrior_player_idle.gif
     - Renamed warrior image to be player specific (right facing)
 
-- Delete manual/latest.json
-    - wrong directory
-
-- Update <file-name> via Tines
-
-- Update build_patch.yml
-    - Updated logic handling
-
-- Update build_patch.yml
-    - Updated changelog function
-
-- Update build_patch.yml
-    - Updated to include changelog
-
-- Create CHANGELOG.md
-    - Added initial change log markdown file
-
-- Delete Changelog.md
-    - Need to rename
-
-- Create Changelog.md
-    - Added initial change log md file
-
-- Update build_patch.yml
-    - Typo fixed
-
 - Update build_patch.yml
     - Added display logo to images. Not sure if necessary, but the native Tines add image to resource includes it
-
-- Update build_patch.yml
-    - Updated
-
-- Update build_patch.yml
-    - Added access
-
-- Update build_patch.yml
-    - Import and run on Python instead
-
-- Create build_patch.yml
-    - Added github actions to automate the json versioning file
 
 - Add files via upload
     - Added originally packaged images (whether the game actually used them or not)
 
-- Create test.jjj
-    - create directory for images
+---
 
-- Create developer_commentary.md
-    - Added base developer commentary manual page
-
-- Create developer_log_5.md
-    - Added base developer log 5 manual page
-
-- Create developer_log_4.md
-    - Added base developer log 4 manual page
-
-- Create developer_log_3.md
-    - Added base developer log 3 manual page
-
-- Create developer_log_2.md
-    - Added base developer log 2 manual page
-
-- Create developer_log_1.md
-    - Added base developer log 1 manual page
-
-- Create tips_and_tricks.md
-    - Added base tips and tricks manual page
-
-- Create death_and_revival.md
-    - Added base death and revival manual page
-
-- Create progression_and_scaling.md
-    - Added base progression and scaling manual page
-
-- Create town_and_shop.md
-    - Added base town and shop manual page
-
-- Create combat.md
-    - Added base combat manual page
-
-- Create dungeons.md
-    - Added base dungeons manual page
-
-- Create inventory_and_items.md
-    - Added base inventory and items manual page
-
-- Create stats_and_leveling.md
-    - Added base stats and leveling manual page
-
-- Create characters.md
-    - Added base characters manual page
-
-- Create getting_started.md
-    - Added the base getting started manual page
-
-- Create introduction.md
-    - Added base introduction manual page
-
-- Create update_combat_heal.py
-    - Added base update combat heal python script
-
-- Create upscale_images.py
-    - Added base upscale images python script
-
-- Create die_character_payload.py
-    - Added base die character payload python script
-
-- Create revive_character_payload.py
-    - Added base revive character payload python script
-
-- Create upscale_images_combat.py
-    - Added base upscale images combat python script
-
-- Create update_char_battle_loot.py
-    - Added base update character battle loot python script
-
-- Create upscale_images_battle.py
-    - Added base upscale images battle python script
-
-- Create update_char_enemy_gen.py
-    - Added base update character enemy generator python script
-
-- Create upscale_images_event.py
-    - Added base upscale images event python script
-
-- Create update_char_payload_event.py
-    - Added base update character payload event python script
-
-- Create update_char_payload_move_movement.py
-    - Added base update character payload move movement python script
-
-- Create update_char_payload_move_quick.py
-    - Added base update character payload move quick python script
-
-- Create update_char_dungeon_exit.py
-    - Added base update character dungeon exit python script
-
-- Create update_char_dungeon_map.py
-    - Added base update character dungeon map python script
-
-- Create update_char_town_rest.py
-    - Added base update character town rest python script
-
-- Create update_char_shop_equip.py
-    - Added base update character shop equip python script
-
-- Create update_char_shop_sell.py
-    - Added base update character shop sell python script
-
-- Create update_char_buy.py
-    - Added base update character buy python script
-
-- Create delete_character_payload.py
-    - Added base delete character payload python script
-
-- Create loot_generator.py
-    - Added base loot generator python script
-
-- Create create_player_payload.py
-    - Added base create player payload python script
-
-- Create roll_player_stats.py
-    - Added base roll player stats python script
-
-- Create draw_animation_image.py
-    - Added base draw animation image python script
-
-- Create map_generator.py
-    - Added base map generator python script
-
-- Create config.json
-    - Add version 1.0 config
-
-- Update README.md
-    - Updated with work in progress details as well as backstory behind the project.
-
+### v1.0.0 - [2025/10/28]
 - Initial commit
-    - ---
+
+
+
+
+
+
+

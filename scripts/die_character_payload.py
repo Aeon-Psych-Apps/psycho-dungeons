@@ -11,7 +11,7 @@ def main(input):
     )
 
     if not removed_character:
-        return {'error': f'No character found with id '{character_id}'', 'player': player}
+        return {'error': f"No character found with id '{character_id}'", 'player': player}
 
     # Remove the character
     player['characters'] = [c for c in characters if str(c.get('char_id')) != str(character_id)]

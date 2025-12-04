@@ -1,12 +1,14 @@
 name: Create Versioned Release File
 
 on:
-  push:
+  pull_request:
+    types: [closed]   # Only run when a PR is closed
     branches:
-      - main
+      - main          # PR targeting main
 
 jobs:
   release_version:
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'test'
     runs-on: ubuntu-latest
 
     steps:
@@ -16,28 +18,30 @@ jobs:
           ref: test
           fetch-depth: 0
 
-      - name: Read github_version from latest.json in test
+      - name: Read github_version from latest.json
         id: version
         run: |
-          VERSION=$(jq -r '.github_version' latest.json)
+          VERSION=$(jq -r '.config.github_version' latest.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Skip if version file already exists
+      - name: Check if versioned file exists
+        id: check_file
         run: |
           FILE="releases/v${{ steps.version.outputs.version }}.json"
           if [ -f "$FILE" ]; then
-            echo "Version $FILE already exists. Skipping commit."
-            echo "skip=true" >> $GITHUB_ENV
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create versioned file
-        if: env.skip != 'true'
+        if: steps.check_file.outputs.exists == 'false'
         run: |
           mkdir -p releases
           cp latest.json "releases/v${{ steps.version.outputs.version }}.json"
 
-      - name: Commit version file (internal)
-        if: env.skip != 'true'
+      - name: Commit and push versioned file
+        if: steps.check_file.outputs.exists == 'false'
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"

@@ -25,7 +25,7 @@ def main(input):
             character = char
             break
     if not character:
-        return {'error': f'Character '{character_name}' not found.'}
+        return {'error': f"Character '{character_name}' not found."}
 
     inventory = character.get('inventory', [])
     equipment = character.get('equipment', [])
@@ -36,14 +36,14 @@ def main(input):
     if action == 'equip':
         item = next((i for i in inventory if i.get('item_id') == equip_id), None)
         if not item:
-            return {'error': f'Item '{equip_id}' not found in inventory.'}
+            return {'error': f"Item '{equip_id}' not found in inventory."}
 
         if item.get('type') != 'equipment':
-            return {'error': f'Item '{item.get('name')}' is not an equippable item.'}
+            return {'error': f"Item '{item.get('name')}' is not an equippable item."}
 
         slot = item.get('slot')
         if not slot:
-            return {'error': f'Item '{item.get('name')}' missing slot type.'}
+            return {'error': f"Item '{item.get('name')}' missing slot type."}
 
         # === Handle ring logic (2 slots) ===
         if slot == 'ring':
@@ -79,7 +79,7 @@ def main(input):
     elif action == 'unequip':
         item = next((eq for eq in equipment if eq.get('item_id') == equip_id), None)
         if not item:
-            return {'error': f'Item '{equip_id}' not found in equipped gear.'}
+            return {'error': f"Item '{equip_id}' not found in equipped gear."}
 
         # Move to inventory
         inventory.append(copy.deepcopy(item))
