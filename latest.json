@@ -1,6 +1,6 @@
 {
   "config": {
-    "version": "1.0.2-test - This patch also requires Story version 1.0.2",
+    "version": "1.0.2 - This patch also requires Story version 1.0.2",
     "github_version": "1.0.2",
     "patch_time": null,
     "folder_id": null,
